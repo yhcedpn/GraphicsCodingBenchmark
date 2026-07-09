@@ -1,0 +1,8 @@
+{
+  "dependencies": [
+    "glfw3",
+    "glad",
+    "glm"
+  ],
+  "builtin-baseline": "42e4e33e1505c9f47b58c21e0f557c1571b751ee"
+}
