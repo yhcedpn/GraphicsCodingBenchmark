@@ -1,6 +1,6 @@
-## OpenGLCodingBenchmark 测评项目规范
+## GraphicsCodingBenchmark OpenGL 测评项目规范
 
-/BenchmarkResults/AGENTS.override.md
+/BenchmarkResults/OpenGL/AGENTS.override.md
 
 ### 文件规则
 
