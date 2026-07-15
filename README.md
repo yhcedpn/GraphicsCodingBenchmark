@@ -1,5 +1,7 @@
 # GraphicsCodingBenchmark
 
+前身为 yhcedpn/OpenGLCodingBenchmark 项目，为方便添加使用 OpenGL 以外的图形 API 的图形编程任务测评而更名。
+
 ## 项目简介
 
 `GraphicsCodingBenchmark` 用一组图形编程任务，测试不同模型在真实 C++ 图形工程场景中的表现。
