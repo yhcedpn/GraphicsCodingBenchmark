@@ -86,6 +86,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="materials.json" />
     <None Include="VoxelPBRFrustumCulling_TASK.md" />
   </ItemGroup>
   <ItemGroup>

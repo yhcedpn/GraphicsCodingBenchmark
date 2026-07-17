@@ -18,6 +18,9 @@
     <None Include="VoxelPBRFrustumCulling_TASK.md">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="materials.json">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
