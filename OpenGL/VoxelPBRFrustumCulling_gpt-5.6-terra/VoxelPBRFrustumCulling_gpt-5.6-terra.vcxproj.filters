@@ -21,6 +21,39 @@
     <None Include="materials.json">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="shaders\brdf.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\environment.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\fullscreen.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\fullscreen.vert">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\ibl_capture.vert">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\irradiance.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\prefilter.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\scene.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\scene.vert">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\shadow.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\shadow.vert">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

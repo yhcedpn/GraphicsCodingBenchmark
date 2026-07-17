@@ -88,6 +88,17 @@
   <ItemGroup>
     <None Include="materials.json" />
     <None Include="VoxelPBRFrustumCulling_TASK.md" />
+    <None Include="shaders\brdf.frag" />
+    <None Include="shaders\environment.frag" />
+    <None Include="shaders\fullscreen.frag" />
+    <None Include="shaders\fullscreen.vert" />
+    <None Include="shaders\ibl_capture.vert" />
+    <None Include="shaders\irradiance.frag" />
+    <None Include="shaders\prefilter.frag" />
+    <None Include="shaders\scene.frag" />
+    <None Include="shaders\scene.vert" />
+    <None Include="shaders\shadow.frag" />
+    <None Include="shaders\shadow.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
