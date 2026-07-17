@@ -6,9 +6,9 @@
 
 `GraphicsCodingBenchmark` 用一组图形编程任务，测试不同模型在真实 C++ 图形工程场景中的表现。
 
-结果按图形 API 或技术类别组织在 `BenchmarkResults` 下：
+结果按图形 API 或技术类别组织在根目录下：
 
-- `BenchmarkResults/OpenGL/`：现有的 OpenGL 编程任务及不同模型的完成结果
+- `OpenGL/`：现有的 OpenGL 编程任务及不同模型的完成结果
 
 ## 如何构建
 
@@ -27,3 +27,7 @@
 - 面对资源生命周期、FBO、shader、输入控制时是否容易出错
 - 模型是否会编造不存在，不可用的方法，函数，方法参数等
 - 在严格约束下，模型是否还能产出结构清晰、可维护的代码
+
+## 测评任务定义
+
+- [VoxelPBRFrustumCulling](OpenGL/VoxelPBRFrustumCulling_gpt-5.6-terra/VoxelPBRFrustumCulling_TASK.md)：像素风体素场景、程序化 PBR/IBL、实时光照与阴影、实例化绘制和可验证的 CPU 视锥剔除。
