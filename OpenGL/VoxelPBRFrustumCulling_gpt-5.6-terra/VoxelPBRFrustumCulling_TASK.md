@@ -135,12 +135,11 @@
 - **绝对禁止**以任何形式读取、写入或查找上级目录内的文件，包括调用工具和执行命令两种形式。
 - 所有产物**必须**放在当前目录中，不可以在任何别处。
 - 使用当前目录的 `vcpkg.json` 和 `vcpkg_installed/`。
-- 不得修改 `vcpkg.json`、triplets、overlays、installed tree、`.vcxproj`、`.vcxproj.filters` 或 `.vcxproj.user`。
+- 不得修改 `vcpkg.json`、triplets、overlays、installed tree、`.vcxproj`、`.vcxproj.filters` 或 `.vcxproj.user`，除非是为项目增加头文件，源文件或资源文件的引用。
 - 除当前项目内预置的 `materials.json` 和模型创建的独立 shader 文本外，不得下载或加载外部 texture、model、font、cubemap、HDR map、shader include 或其他资产。
 - 不得使用 `GL_NV_command_list`、bindless graphics、mesh shader、ray tracing API、Vulkan、Direct3D、CUDA、OptiX 或任何厂商专属 OpenGL 扩展。
 - 不得使用 `glBegin`/`glEnd` 等废弃 immediate mode。
 - 依赖固定为当前 `vcpkg.json` 中的 `glfw3`、`glad`、`glm` 和 `nlohmann-json`。必须使用 GLM 和 nlohmann-json；不得增加 Assimp、stb_image、FreeType、ImGui 或其他依赖。
-- Assimp 专用于导入外部模型，而本任务只有程序化共享 cube mesh，因此使用 Assimp 不提供有效能力，反而绕开了任务对几何生成和资源管理的考察。
 
 ## 验收标准
 
