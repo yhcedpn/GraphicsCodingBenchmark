@@ -13,8 +13,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{3bbc12fe-2914-4c70-a39c-28fc6ec71056}</ProjectGuid>
-    <RootNamespace>VoxelPBRFrustumCullinggpt56terra</RootNamespace>
+    <ProjectGuid>{07e7c3ae-736e-4bea-b4f8-f8aefeed9d79}</ProjectGuid>
+    <RootNamespace>CachedCubePipelinesCodexgpt54xhigh</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -47,6 +47,10 @@
     <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
@@ -76,6 +80,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -86,19 +91,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="materials.json" />
-    <None Include="VoxelPBRFrustumCulling_TASK.md" />
-    <None Include="shaders\brdf.frag" />
-    <None Include="shaders\environment.frag" />
-    <None Include="shaders\fullscreen.frag" />
-    <None Include="shaders\fullscreen.vert" />
-    <None Include="shaders\ibl_capture.vert" />
-    <None Include="shaders\irradiance.frag" />
-    <None Include="shaders\prefilter.frag" />
-    <None Include="shaders\scene.frag" />
-    <None Include="shaders\scene.vert" />
-    <None Include="shaders\shadow.frag" />
-    <None Include="shaders\shadow.vert" />
+    <None Include="CachedCubePipelines_TASK.md" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

@@ -13,8 +13,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{4d0b18b4-41d0-4b66-a71e-9e8141d7ef62}</ProjectGuid>
-    <RootNamespace>HelloWindowgpt55</RootNamespace>
+    <ProjectGuid>{6e9209ef-7bfe-4810-92a5-8ea18a4bbf87}</ProjectGuid>
+    <RootNamespace>ProceduralDeferredRendererCodexgpt56terraxhigh</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -91,10 +91,10 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <None Include="ProceduralDeferredRenderer_TASK.md" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="HelloWindow_TASK.md" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
