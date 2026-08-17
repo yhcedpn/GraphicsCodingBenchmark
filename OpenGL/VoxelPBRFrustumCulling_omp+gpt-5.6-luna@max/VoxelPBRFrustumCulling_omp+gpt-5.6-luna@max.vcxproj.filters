@@ -3,7 +3,7 @@
   <ItemGroup>
     <Filter Include="源文件">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx;frag;vert</Extensions>
     </Filter>
     <Filter Include="头文件">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
@@ -25,6 +25,39 @@
     </None>
     <None Include="materials.json">
       <Filter>资源文件</Filter>
+    </None>
+    <None Include="shaders\brdf.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\environment.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\fullscreen.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\fullscreen.vert">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\ibl_capture.vert">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\irradiance.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\prefilter.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\scene.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\scene.vert">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\shadow.frag">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="shaders\shadow.vert">
+      <Filter>源文件</Filter>
     </None>
   </ItemGroup>
 </Project>
