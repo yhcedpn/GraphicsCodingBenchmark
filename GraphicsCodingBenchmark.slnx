@@ -2,11 +2,11 @@
   <Configurations>
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="OpenGL/CachedCubePipelines_gpt-5.4/CachedCubePipelines_gpt-5.4.vcxproj" Id="07e7c3ae-736e-4bea-b4f8-f8aefeed9d79" />
-  <Project Path="OpenGL/CachedCubePipelines_gpt-5.5/CachedCubePipelines_gpt-5.5.vcxproj" Id="4d12652a-59e2-4653-a506-3a0ef5a39baa" />
-  <Project Path="OpenGL/HelloWindow_gpt-5.4/HelloWindow_gpt-5.4.vcxproj" Id="03fb4563-5505-4f1f-9ec3-34a603fbc9cd" />
-  <Project Path="OpenGL/HelloWindow_gpt-5.5/HelloWindow_gpt-5.5.vcxproj" Id="4d0b18b4-41d0-4b66-a71e-9e8141d7ef62" />
-  <Project Path="OpenGL/ProceduralDeferredRenderer_gpt-5.4/ProceduralDeferredRenderer_gpt-5.4.vcxproj" Id="5f0695e7-1a75-4fe0-9ebf-d6aae2a536c2" />
-  <Project Path="OpenGL/ProceduralDeferredRenderer_gpt-5.6-terra/ProceduralDeferredRenderer_gpt-5.6-terra.vcxproj" Id="6e9209ef-7bfe-4810-92a5-8ea18a4bbf87" />
-  <Project Path="OpenGL/VoxelPBRFrustumCulling_gpt-5.6-terra/VoxelPBRFrustumCulling_gpt-5.6-terra.vcxproj" Id="3bbc12fe-2914-4c70-a39c-28fc6ec71056" />
+  <Project Path="OpenGL/CachedCubePipelines_Codex%gpt-5.4@xhigh/CachedCubePipelines_gpt-5.4.vcxproj" Id="07e7c3ae-736e-4bea-b4f8-f8aefeed9d79" />
+  <Project Path="OpenGL/CachedCubePipelines_Codex%gpt-5.5@xhigh/CachedCubePipelines_gpt-5.5.vcxproj" Id="4d12652a-59e2-4653-a506-3a0ef5a39baa" />
+  <Project Path="OpenGL/HelloWindow_Codex%gpt-5.4@xhigh/HelloWindow_gpt-5.4.vcxproj" Id="03fb4563-5505-4f1f-9ec3-34a603fbc9cd" />
+  <Project Path="OpenGL/HelloWindow_Codex%gpt-5.5@xhigh/HelloWindow_gpt-5.5.vcxproj" Id="4d0b18b4-41d0-4b66-a71e-9e8141d7ef62" />
+  <Project Path="OpenGL/ProceduralDeferredRenderer_Codex%gpt-5.4@xhigh/ProceduralDeferredRenderer_gpt-5.4.vcxproj" Id="5f0695e7-1a75-4fe0-9ebf-d6aae2a536c2" />
+  <Project Path="OpenGL/ProceduralDeferredRenderer_Codex%gpt-5.6-terra@xhigh/ProceduralDeferredRenderer_gpt-5.6-terra.vcxproj" Id="6e9209ef-7bfe-4810-92a5-8ea18a4bbf87" />
+  <Project Path="OpenGL/VoxelPBRFrustumCulling_Codex%gpt-5.6-terra@max/VoxelPBRFrustumCulling_gpt-5.6-terra.vcxproj" Id="3bbc12fe-2914-4c70-a39c-28fc6ec71056" />
 </Solution>
