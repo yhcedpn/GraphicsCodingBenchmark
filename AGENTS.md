@@ -1,4 +1,4 @@
-# GraphicsCodingBenchmark
+# RenderArena
 
 ## OpenGL 测评项目规范（Visual Studio + msvc + vcpkg）
 

@@ -13,9 +13,9 @@
 - 使用 UBO/SSBO 等结构化 GPU 数据路径；初始化阶段构建 CPU 侧 render graph 或缓存 pass-command 结构，每帧重放
 - 运行时调试：`WASD`+鼠标相机、`B`/`H`/`P` 开关、`1`/`2`/`3` 切换 debug view、支持窗口 resize、标题显示 FPS
 
-完整任务定义：[`ProceduralDeferredRenderer_TASK.md`](https://github.com/yhcedpn/GraphicsCodingBenchmark/blob/main/OpenGL/ProceduralDeferredRenderer_Codex+gpt-5.6-terra@xhigh/ProceduralDeferredRenderer_TASK.md)
+完整任务定义：[`ProceduralDeferredRenderer_TASK.md`](https://github.com/yhcedpn/RenderArena/blob/main/OpenGL/ProceduralDeferredRenderer_Codex+gpt-5.6-terra@xhigh/ProceduralDeferredRenderer_TASK.md)
 
 ## 相关评审 issue
 
-- [gpt-5.4 执行 ProceduralDeferredRenderer 任务（#10）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/10)
-- [gpt-5.6-terra 执行 ProceduralDeferredRenderer 任务（#13）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/13)
+- [gpt-5.4 执行 ProceduralDeferredRenderer 任务（#10）](https://github.com/yhcedpn/RenderArena/issues/10)
+- [gpt-5.6-terra 执行 ProceduralDeferredRenderer 任务（#13）](https://github.com/yhcedpn/RenderArena/issues/13)

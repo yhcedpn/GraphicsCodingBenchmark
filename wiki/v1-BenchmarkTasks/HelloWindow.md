@@ -11,9 +11,9 @@ v1 中最简单的图形编程任务：从零搭建一个可运行、可关闭�
 - 按 `Esc` 可关闭窗口
 - 可在 MSBuild 的 `Debug|x64` 配置下构建
 
-完整任务定义：[`HelloWindow_TASK.md`](https://github.com/yhcedpn/GraphicsCodingBenchmark/blob/main/OpenGL/HelloWindow_Codex+gpt-5.4@xhigh/HelloWindow_TASK.md)
+完整任务定义：[`HelloWindow_TASK.md`](https://github.com/yhcedpn/RenderArena/blob/main/OpenGL/HelloWindow_Codex+gpt-5.4@xhigh/HelloWindow_TASK.md)
 
 ## 相关评审 issue
 
-- [gpt-5.4 执行 HelloWindow 任务（#5）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/5)
-- [gpt-5.5 执行 HelloWindow 任务（#4）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/4)
+- [gpt-5.4 执行 HelloWindow 任务（#5）](https://github.com/yhcedpn/RenderArena/issues/5)
+- [gpt-5.5 执行 HelloWindow 任务（#4）](https://github.com/yhcedpn/RenderArena/issues/4)
