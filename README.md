@@ -1,7 +1,5 @@
 # RenderArena
 
-> 改名说明：本仓库由 `GraphicsCodingBenchmark` 更名为 `RenderArena`。新名突出「渲染」（Render）与「竞技测评」（Arena）的定位，比 "Graphics Coding Benchmark" 更简洁、辨识度更高。更早的前身是 `yhcedpn/OpenGLCodingBenchmark` 项目，当时为方便添加使用 OpenGL 以外的图形 API 的图形编程任务测评而更名。
-
 ## 项目简介
 
 `RenderArena` 用一组图形编程任务，测试不同模型在真实 C++/C# 图形工程场景中的表现。
@@ -17,10 +15,14 @@
 - [Wiki 首页](https://github.com/yhcedpn/RenderArena/wiki)：项目介绍与构建指南
 - [v1 —— OpenGL 图形编程任务](https://github.com/yhcedpn/RenderArena/wiki/v1-BenchmarkTasks)：v1 版本的任务清单、Release v1 与相关评审 issue
 
+## 构建
+
+构建以 CMake 为跨平台契约：Windows 可用 VS2026（`RenderArena.slnx`）或 CMake，Linux 使用 CMake；依赖由各任务目录 `vcpkg.json` 管理。完整步骤与平台适用性见 [Wiki · 如何构建](https://github.com/yhcedpn/RenderArena/wiki/Home)。
+
 ## 适合用来观察什么
 
 - 不同模型在简单、中等、复杂图形编程任务上的稳定性差异
 - 从“窗口初始化”到“多 pass 渲染”等复杂渲染流程时，代码组织能力如何变化
 - 面对资源生命周期、FBO、shader、输入控制时是否容易出错
-- 模型是否会编造不存在，不可用的方法，函数，方法参数等
+- 模型是否会编造不存在，不可用的方法，函数，参数等
 - 在严格约束下，模型是否还能产出结构清晰、可维护的代码
