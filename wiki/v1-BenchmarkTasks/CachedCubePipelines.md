@@ -13,9 +13,9 @@
 - 使用 UBO 传递共享帧数据；一个简单确定性的动画；`WASD` 相机、`Space` 暂停/恢复、`1`/`2` 切换两个 pipeline 分组
 - 禁止使用 `GL_NV_command_list`、bindless graphics 或任何厂商专属 OpenGL 扩展
 
-完整任务定义：[`CachedCubePipelines_TASK.md`](https://github.com/yhcedpn/GraphicsCodingBenchmark/blob/main/OpenGL/CachedCubePipelines_Codex+gpt-5.5@xhigh/CachedCubePipelines_TASK.md)
+完整任务定义：[`CachedCubePipelines_TASK.md`](https://github.com/yhcedpn/RenderArena/blob/main/OpenGL/CachedCubePipelines_Codex+gpt-5.5@xhigh/CachedCubePipelines_TASK.md)
 
 ## 相关评审 issue
 
-- [gpt-5.4 执行 CachedCubePipelines 任务（#2）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/2)
-- [gpt-5.5 执行 CachedCubePipelines 任务（#3）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/3)
+- [gpt-5.4 执行 CachedCubePipelines 任务（#2）](https://github.com/yhcedpn/RenderArena/issues/2)
+- [gpt-5.5 执行 CachedCubePipelines 任务（#3）](https://github.com/yhcedpn/RenderArena/issues/3)

@@ -15,6 +15,6 @@ v1 对应当前仓库 `OpenGL/` 目录下的四道 OpenGL 4.6 Core Profile 图�
 
 Release v1 包含各任务 `Release|x64` 配置下的编译产物（任务结果 zip 包）：
 
-- 发布页：[`releases/tag/v1`](https://github.com/yhcedpn/GraphicsCodingBenchmark/releases/tag/v1)
+- 发布页：[`releases/tag/v1`](https://github.com/yhcedpn/RenderArena/releases/tag/v1)
 
-> 说明：本版本构建配置仅保留 `Debug|x64` 与 `Release|x64`（见 [#20](https://github.com/yhcedpn/GraphicsCodingBenchmark/pull/20)：移除 win32 支持）。
+> 说明：本版本构建配置仅保留 `Debug|x64` 与 `Release|x64`（见 [#20](https://github.com/yhcedpn/RenderArena/pull/20)：移除 win32 支持）。此外，v1 版本只支持构建方法1，也就是只适用于 VS 2026 + MSVC v145 + vcpkg 的构建方案。

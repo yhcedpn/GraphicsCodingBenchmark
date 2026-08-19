@@ -13,9 +13,9 @@ v1 中最复杂的任务：在保持像素风格的同时正确实现 PBR、实�
 - 实例化绘制（主场景每帧 cube draw call ≤ `2` 次）、CPU 视锥剔除（`C` 开关，可见实例数可降至 `0`）、标题栏实时统计、5 种 debug view
 - 所有 GLSL shader 必须作为独立 UTF-8 文本文件由程序读取，禁止嵌入 C++ 源码
 
-完整任务定义：[`VoxelPBRFrustumCulling_TASK.md`](https://github.com/yhcedpn/GraphicsCodingBenchmark/blob/main/OpenGL/VoxelPBRFrustumCulling_Codex+gpt-5.6-terra@max/VoxelPBRFrustumCulling_TASK.md)
+完整任务定义：[`VoxelPBRFrustumCulling_TASK.md`](https://github.com/yhcedpn/RenderArena/blob/main/OpenGL/VoxelPBRFrustumCulling_Codex+gpt-5.6-terra@max/VoxelPBRFrustumCulling_TASK.md)
 
 ## 相关评审 issue
 
-- [gpt-5.6-luna 执行 VoxelPBRFrustumCulling 任务（#21）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/21)
-- [gpt-5.6-terra 执行 VoxelPBRFrustumCulling 任务（#17）](https://github.com/yhcedpn/GraphicsCodingBenchmark/issues/17)
+- [gpt-5.6-luna 执行 VoxelPBRFrustumCulling 任务（#21）](https://github.com/yhcedpn/RenderArena/issues/21)
+- [gpt-5.6-terra 执行 VoxelPBRFrustumCulling 任务（#17）](https://github.com/yhcedpn/RenderArena/issues/17)
