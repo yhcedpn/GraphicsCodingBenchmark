@@ -14,8 +14,6 @@
 2. 确保本机已正确集成 `vcpkg` 包管理器，并且 MSVC 版本为 v145。
 3. 克隆本仓库，打开 `RenderArena.slnx`，构建并运行你想测试的项目，只可选择 `Debug|x64` 或 `Release|x64` 构建配置。
 
-<!-- 扩容提示：新增构建方式时，在本节下方添加 `### 方法 2：…` 小节，各自列出前提与步骤，注意保持与上面相同的结构。 -->
-
 ### 方法 2：CLI + CMake（Windows / Linux）
 
 同一份任务代码可在 Windows 与 Linux 上使用 CMake + vcpkg 构建。

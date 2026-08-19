@@ -10,33 +10,9 @@
 
 - `OpenGL/`：现有的 OpenGL 编程任务（用 OpenGL 4.6 Core Profile）及不同模型的完成结果
 
-## 跨平台构建
+## 构建
 
-构建以 CMake 为跨平台契约，Windows 与 Linux 共用同一套任务工程，每个任务目录独立可构建（自带 `CMakeLists.txt`、`vcpkg.json`、`CMakePresets.json`）。
-
-### Windows
-
-- 推荐：打开 `RenderArena.slnx`，在 VS2026 中选择 `Debug|x64` / `Release|x64` 构建（vcpkg manifest 自动装依赖，无需额外配置）。
-- 或 CLI + CMake（在任务目录下执行）：
-  ```
-  cmake --preset windows-msvc-release
-  cmake --build out/windows-msvc-release --config Release
-  ```
-
-### Linux
-
-- 前置：CMake ≥ 3.28、Ninja、GCC，并设置 `VCPKG_ROOT` 指向本机 vcpkg 目录（首次构建会经 vcpkg 自动编译依赖，较慢）。
-- 在任务目录下执行：
-  ```
-  cmake --preset linux-gcc-release
-  cmake --build out/linux-gcc-release
-  ```
-
-### 通用说明
-
-- 预设定义集中在仓库根 `CMakePresets.json`（`windows-msvc-*` / `linux-gcc-*`，Debug 对应 `*-debug`）；依赖由各任务目录 `vcpkg.json` manifest 管理，vcpkg 按 `x64-windows` / `x64-linux` triplet 安装；构建产物在任务目录 `out/` 下，不提交。
-- 每个任务目录以 `platforms.json` 声明可构建平台（`{"build_platforms": ["windows","linux"]}`，缺失视为全平台支持）。CI 的 [Build Matrix](.github/workflows/build-matrix.yml) 据此统一跳过不适合当前平台的任务；平台专有实现（如两份 VoxelPBR 的 Windows 专有代码，`platforms.json` 仅声明 `windows`）不会在 Linux 构建——可移植性本身属于被测评内容。
-- 后续新增的 Vulkan 等图形 API 任务沿用同一构建方案（新增 `Vulkan/` 目录即可）。
+构建以 CMake 为跨平台契约：Windows 可用 VS2026（`RenderArena.slnx`）或 CMake，Linux 使用 CMake；依赖由各任务目录 `vcpkg.json` 管理。完整步骤与平台适用性见 [Wiki · 如何构建](https://github.com/yhcedpn/RenderArena/wiki/Home)。
 
 ## 文档（Wiki）
 
