@@ -1,15 +1,47 @@
 # RenderArena
 
-## OpenGL 测评项目规范（Visual Studio + msvc + vcpkg）
+## 测评工作规范
 
-* 不允许修改 .vcxproj .vcxproj.filters .vcxproj.user 等项目文件（它们已经被事先建立好），除非是为项目增加头文件，源文件或资源文件的引用。
-* 主代码文件应当为 main.cpp（它已经被事先建立好）。你也可以建立其他文件（例如辅助代码，着色器，材质或纹理）。
+下列规范仅适用于完成测评任务时
 
-## 跨平台构建规范（Windows + Linux）
+### 任务目录结构
 
-* CMake 是跨平台构建契约：每个任务目录提供 `CMakeLists.txt` 与 `CMakePresets.json`（后者 include 仓库根的默认预设），可在 Windows(MSVC) 与 Linux(GCC) 下按 `Debug`/`Release` 构建；vcpkg manifest（`vcpkg.json`）是双平台统一的依赖来源。
-* `.vcxproj` 系列文件仅保留 Windows + VS2026 兼容用途，继续遵循「只增不改」；新任务若需要 vcxproj，以 CMake 的 VS 生成器导出，不手写。
-* 新增头文件、源文件或着色器等资源时，同步更新对应任务目录的 `CMakeLists.txt`（以及 vcxproj 文件引用）。
-* 平台适用性以 `platforms.json` 声明：内容为 `{"build_platforms": ["windows","linux"]}`，缺失视为全平台支持。CI 的 build-matrix 按此标记跳过不适合当前平台的任务；平台专有实现（如仅支持 Windows 的产物）只列出 `windows`。
-* 既有模型评测产物（main.cpp 等）中的平台专有代码属于被测评内容，禁止在环境层打补丁；其可移植性问题如实记录即可。
+- 项目文件：`<任务名>.vcxproj` / `.vcxproj.filters`、`CMakeLists.txt`、`CMakePresets.json`、`platforms.json`、`vcpkg.json`
+- 代码与资源：`main.cpp`、`shaders/`、`materials.json`、`*_TASK.md`
 
+### 铁律：禁止改动项目文件
+
+以下文件**禁止修改**（内容、参数、属性、依赖一律不动）：
+
+- 任务目录的 `.vcxproj`、`.vcxproj.filters`、`.vcxproj.user`
+- 任务目录的 `CMakeLists.txt`、`CMakePresets.json`、`platforms.json`、`vcpkg.json`
+
+### 允许的改动
+
+新增文件是本职工作，允许新建并向 `.vcxproj` / `.vcxproj.filters` **添加对新文件的引用行**（不改其它内容）：
+
+- **源文件**：普通代码（`.cpp`→`ClCompile`、头文件→`ClInclude`）、着色器（`None` 项，filter=源文件）
+- **资源文件**：`*_TASK.md`、`materials.json` 等（`None` 项，filter=资源文件）
+
+### 编码约定
+
+- 实现优先写进 `main.cpp`；辅助代码优先用头文件；新编译单元尽量并入 `main.cpp`（避免改 CMake）
+- 既有产物中的平台专有代码属被测内容，禁止在项目文件/环境层打补丁，可移植性问题如实记录
+
+### 构建验证（完成任务后应本地构建）
+
+进入任务目录：
+
+```bash
+# 配置（Windows / Linux 二选一）
+cmake --preset windows-msvc-debug    # 或 windows-msvc-release
+cmake --preset linux-gcc-debug       # 或 linux-gcc-release
+
+# 构建
+cmake --build out/windows-msvc-debug --config Debug
+cmake --build out/linux-gcc-debug
+```
+
+- 依赖由 `vcpkg.json` 自动安装（manifest 模式）
+- 也可用 VS 打开 `RenderArena.slnx` 构建，配置只能是 `Debug|x64` / `Release|x64`
+- `platforms.json` 声明平台：`{"build_platforms": ["windows","linux"]}`，缺失视为全平台；仅 Windows 的任务只列 `windows`，CI 据此跳过 Linux 构建
