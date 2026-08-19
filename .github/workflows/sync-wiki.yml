@@ -1,0 +1,57 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - wiki/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-wiki
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Checkout wiki repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: .wiki
+
+      - name: Sync wiki content
+        run: rsync -av --delete --exclude='.git/' "$GITHUB_WORKSPACE/wiki/" "$GITHUB_WORKSPACE/.wiki/"
+
+      - name: Detect wiki changes
+        id: changes
+        run: |
+          if [ -n "$(git -C "$GITHUB_WORKSPACE/.wiki" status --short)" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push wiki changes
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          WIKI_GIT_USER_NAME: github-actions[bot]
+          WIKI_GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          WIKI_COMMIT_MESSAGE: "docs: 更新 Wiki ${{ github.sha }}"
+        run: |
+          git -C "$GITHUB_WORKSPACE/.wiki" config user.name "$WIKI_GIT_USER_NAME"
+          git -C "$GITHUB_WORKSPACE/.wiki" config user.email "$WIKI_GIT_USER_EMAIL"
+          git -C "$GITHUB_WORKSPACE/.wiki" add --all
+          git -C "$GITHUB_WORKSPACE/.wiki" commit -m "$WIKI_COMMIT_MESSAGE"
+          git -C "$GITHUB_WORKSPACE/.wiki" push

@@ -10,15 +10,12 @@
 
 - `OpenGL/`：现有的 OpenGL 编程任务（用 OpenGL 4.6 Core Profile）及不同模型的完成结果
 
-## 如何构建
+## 文档（Wiki）
 
-### 方式一：直接用 Visual Studio
+项目文档位于 [GitHub Wiki](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki)，并由仓库 `wiki/` 目录自动同步维护。
 
-1. 安装 Visual Studio 2026，确保安装 `使用 C++ 的桌面开发` 模块。
-2. 确保本机已正确集成 `vcpkg` 包管理器，并且 MSVC 版本为 v145。
-3. 克隆本仓库，打开 `GraphicsCodingBenchmark.slnx`，构建并运行你想测试的项目，只可选择 `Debug|x64` 或 `Release|x64` 构建配置。
-
-最好是在 Windows 11 系统运行，安装最新的 Windows SDK。另外，确保你使用的 GPU 支持 OpenGL 4.6 等最新的图形 API。这也是作者使用的环境。
+- [Wiki 首页](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki)：项目介绍与构建指南
+- [v1 —— OpenGL 图形编程任务](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki/v1-BenchmarkTasks)：v1 版本的任务清单、Release v1 与相关评审 issue
 
 ## 适合用来观察什么
 
