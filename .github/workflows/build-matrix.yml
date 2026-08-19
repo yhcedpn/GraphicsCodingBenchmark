@@ -1,0 +1,110 @@
+name: Build Matrix (Windows + Linux)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'OpenGL/**'
+      - 'Vulkan/**'
+      - 'CMakePresets.json'
+      - '**/CMakeLists.txt'
+      - '.github/workflows/build-matrix.yml'
+  pull_request:
+    paths:
+      - 'OpenGL/**'
+      - 'Vulkan/**'
+      - 'CMakePresets.json'
+      - '**/CMakeLists.txt'
+      - '.github/workflows/build-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-msvc-release
+            os: windows-latest
+            preset: windows-msvc-release
+            build_config: Release
+            shell: pwsh
+          - name: linux-gcc-release
+            os: ubuntu-latest
+            preset: linux-gcc-release
+            build_config: ""
+            shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/vcpkg"
+          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          "VCPKG_ROOT=$env:RUNNER_TEMP/vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Bootstrap vcpkg (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Build all tasks (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($task in Get-ChildItem -Path OpenGL -Directory) {
+            if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) {
+              Write-Host "skip (no CMakeLists.txt): $($task.Name)"
+              continue
+            }
+            Write-Host "== configure $($task.Name) =="
+            cmake -S $task.FullName --preset ${{ matrix.preset }}
+            if ($LASTEXITCODE -ne 0) { throw "configure failed: $($task.Name)" }
+            Write-Host "== build $($task.Name) =="
+            cmake --build (Join-Path $task.FullName 'out' "${{ matrix.preset }}") --config ${{ matrix.build_config }}
+            if ($LASTEXITCODE -ne 0) { throw "build failed: $($task.Name)" }
+          }
+
+      - name: Build all tasks (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: |
+          set -euo pipefail
+          for task in OpenGL/*/; do
+            [ -f "$task/CMakeLists.txt" ] || { echo "skip (no CMakeLists.txt): $task"; continue; }
+            case "$task" in
+              *VoxelPBR*)
+                # 已知：这两份 VoxelPBR 模型产物使用 windows.h / GetModuleFileNameW，
+                # 属于 Windows 专有实现（可移植性本身是被测量的内容），此处跳过。
+                echo "skip (Windows-only model output): $task"
+                continue
+                ;;
+            esac
+            echo "== configure $task =="
+            cmake -S "$task" --preset ${{ matrix.preset }}
+            echo "== build $task =="
+            cmake --build "$task/out/${{ matrix.preset }}"
+          done
