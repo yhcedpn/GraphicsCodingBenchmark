@@ -61,17 +61,18 @@ jobs:
           restore-keys: |
             vcpkg-${{ runner.os }}-${{ matrix.preset }}-
 
-      # L1 缓存：已安装的 vcpkg_installed 树。命中后各任务 configure 时
-      # vcpkg 只需校验 installed 状态，无需从二进制缓存重新恢复，
-      # 省掉 10 次「数百小文件复制 + Defender 扫描」的 Windows 主要耗时。
-      # 用 glob 匹配任务目录，新增任务无需改此步骤；key 与 L2 同源，
+      # L1 缓存：已安装的 vcpkg_installed 树（位于各任务构建目录 out/<preset>/ 下，
+      # 由 vcpkg manifest 模式 + CMake toolchain 生成，而非任务源码目录）。
+      # 命中后各任务 configure 时 vcpkg 只需校验 installed 状态，无需从二进制缓存
+      # 重新恢复，省掉 10 次「数百小文件复制 + Defender 扫描」的 Windows 主要耗时。
+      # 用 glob + preset 插值匹配任务目录，新增任务无需改此步骤；key 与 L2 同源，
       # vcpkg.json / preset 变更时两层同时失效，由 L2 二进制缓存兜底重建。
       - name: Cache vcpkg installed trees
         uses: actions/cache@v6
         with:
           path: |
-            OpenGL/*/vcpkg_installed/*
-            Vulkan/*/vcpkg_installed/*
+            OpenGL/*/out/${{ matrix.preset }}/vcpkg_installed
+            Vulkan/*/out/${{ matrix.preset }}/vcpkg_installed
           key: vcpkg-installed-${{ runner.os }}-${{ matrix.preset }}-${{ hashFiles('OpenGL/**/vcpkg.json', 'OpenGL/**/vcpkg-configuration.json', 'Vulkan/**/vcpkg.json', 'Vulkan/**/vcpkg-configuration.json', 'CMakePresets.json') }}
           restore-keys: |
             vcpkg-installed-${{ runner.os }}-${{ matrix.preset }}-
