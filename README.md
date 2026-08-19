@@ -12,10 +12,10 @@
 
 ## 文档（Wiki）
 
-项目文档位于 [GitHub Wiki](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki)，并由仓库 `wiki/` 目录自动同步维护（见 [`.github/workflows/sync-wiki.yml`](.github/workflows/sync-wiki.yml)）：
+项目文档位于 [GitHub Wiki](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki)，并由仓库 `wiki/` 目录自动同步维护。
 
 - [Wiki 首页](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki)：项目介绍与构建指南
-- [v1 —— OpenGL 图形编程任务](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki/v1-BenchmarkTasks)：当前任务清单、Release v1 与相关评审 issue
+- [v1 —— OpenGL 图形编程任务](https://github.com/yhcedpn/GraphicsCodingBenchmark/wiki/v1-BenchmarkTasks)：v1 版本的任务清单、Release v1 与相关评审 issue
 
 ## 适合用来观察什么
 
