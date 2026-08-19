@@ -2,25 +2,139 @@ name: Release x64 Builds
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'OpenGL/**'
+      - 'Vulkan/**'
   workflow_dispatch:
     inputs:
       tag:
-        description: 发布版本号（如 v1.1），仅手动触发时使用
+        description: 已存在的发布标签（例如 v1.0，仅用于初始化或补发）
         required: true
-        default: v1.1
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-main
+  cancel-in-progress: false
 
 jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-24.04
+    outputs:
+      should_release: ${{ steps.prepare.outputs.should_release }}
+      tag: ${{ steps.prepare.outputs.tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect new benchmark and prepare tag
+        id: prepare
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          MANUAL_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          valid_tag() {
+            [[ "$1" =~ ^v[0-9]+\.[0-9]+$ ]]
+          }
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            tag="$MANUAL_TAG"
+            valid_tag "$tag" || {
+              echo "标签必须符合 v主版本.次版本，例如 v1.0"
+              exit 1
+            }
+            git rev-parse --verify "$tag^{commit}" >/dev/null 2>&1 || {
+              echo "远端不存在标签 $tag，请先创建并推送该标签"
+              exit 1
+            }
+            {
+              echo "should_release=true"
+              echo "tag=$tag"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          before="$BEFORE"
+          after="$AFTER"
+          if [[ -z "$before" || "$before" =~ ^0+$ ]]; then
+            before=$(git rev-list --max-parents=0 "$after")
+          fi
+
+          declare -A new_tasks=()
+          while IFS= read -r path; do
+            [[ -n "$path" ]] || continue
+            root="${path%%/*}"
+            remainder="${path#*/}"
+            [[ "$root" == "OpenGL" || "$root" == "Vulkan" ]] || continue
+            [[ "$remainder" == */* ]] || continue
+            task_name="${remainder%%/*}"
+            task_dir="$root/$task_name"
+            [[ -f "$task_dir/CMakeLists.txt" ]] || continue
+            if ! git cat-file -e "$before:$task_dir/CMakeLists.txt" 2>/dev/null; then
+              new_tasks["$task_dir"]=1
+            fi
+          done < <(git diff --name-only --diff-filter=A "$before" "$after" -- OpenGL Vulkan)
+
+          if (( ${#new_tasks[@]} == 0 )); then
+            echo "本次提交没有新增测评项目，不发布版本"
+            {
+              echo "should_release=false"
+              echo "tag="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          for task in "${!new_tasks[@]}"; do
+            echo "检测到新增测评项目：$task"
+          done
+
+          latest=""
+          while IFS= read -r candidate; do
+            if valid_tag "$candidate"; then
+              latest="$candidate"
+              break
+            fi
+          done < <(git tag --list 'v*' --sort=-version:refname)
+
+          if [[ -z "$latest" ]]; then
+            echo "没有找到版本基线，请先创建 v1.0 标签"
+            exit 1
+          fi
+
+          version="${latest#v}"
+          major="${version%%.*}"
+          minor="${version#*.}"
+          tag="v${major}.$((minor + 1))"
+          if git rev-parse --verify "$tag^{commit}" >/dev/null 2>&1; then
+            echo "标签 $tag 已存在，拒绝覆盖"
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "$tag" "$after" -m "Release $tag"
+          git push origin "$tag"
+
+          {
+            echo "should_release=true"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -33,23 +147,23 @@ jobs:
             triplet: x64-windows
             preset: windows-msvc-release
             build_config: Release
-            shell: pwsh
           - name: linux
             os: ubuntu-24.04
             platform_key: linux
             triplet: x64-linux
             preset: linux-gcc-release
-            build_config: ""
-            shell: bash
+            build_config: ''
     steps:
-      - name: Checkout repository
+      - name: Checkout release tag
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
 
       - name: Cache vcpkg dependencies
         uses: actions/cache@v6
         with:
           path: .ci-cache/vcpkg
-          key: vcpkg-${{ runner.os }}-${{ matrix.preset }}-${{ hashFiles('OpenGL/**/vcpkg.json', 'OpenGL/**/vcpkg-configuration.json', 'CMakePresets.json') }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.preset }}-${{ hashFiles('OpenGL/**/vcpkg.json', 'OpenGL/**/vcpkg-configuration.json', 'Vulkan/**/vcpkg.json', 'Vulkan/**/vcpkg-configuration.json', 'CMakePresets.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-${{ matrix.preset }}-
 
@@ -89,9 +203,6 @@ jobs:
           } >> "$GITHUB_ENV"
           "$vcpkg_root/vcpkg" version
 
-      # 构建并打包每个任务（Release x64，按 platforms.json 过滤平台适用性）。
-      # Windows：可执行文件 + vcpkg 运行时 DLL + shaders/materials.json → zip
-      # Linux：可执行文件 + shaders/materials.json → tar.gz
       - name: Build and package tasks (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -99,7 +210,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           function Test-Platform {
             param([string]$Manifest, [string]$Key)
-            if (-not (Test-Path $Manifest)) { return $true }  # 无标记 → 全平台
+            if (-not (Test-Path $Manifest)) { return $true }
             try {
               $j = Get-Content -Raw -Path $Manifest | ConvertFrom-Json
               return ($j.build_platforms -contains $Key)
@@ -110,40 +221,43 @@ jobs:
           }
           $staging = 'staging'
           New-Item -ItemType Directory -Force $staging | Out-Null
-          foreach ($task in Get-ChildItem -Path OpenGL -Directory) {
-            if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) { continue }
-            $manifest = Join-Path $task.FullName 'platforms.json'
-            if (-not (Test-Platform -Manifest $manifest -Key '${{ matrix.platform_key }}')) {
-              Write-Host "skip (${{ matrix.platform_key }} 不在平台标记中): $($task.Name)"
-              continue
+          foreach ($root in @('OpenGL', 'Vulkan')) {
+            foreach ($task in Get-ChildItem -Path $root -Directory) {
+              if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) { continue }
+              $manifest = Join-Path $task.FullName 'platforms.json'
+              if (-not (Test-Platform -Manifest $manifest -Key '${{ matrix.platform_key }}')) {
+                Write-Host "skip (${{ matrix.platform_key }} 不在平台标记中): $($task.Name)"
+                continue
+              }
+              Write-Host "== configure $root/$($task.Name) =="
+              cmake -S $task.FullName --preset ${{ matrix.preset }}
+              if ($LASTEXITCODE -ne 0) { throw "configure failed: $root/$($task.Name)" }
+              Write-Host "== build $root/$($task.Name) =="
+              $outDir = Join-Path $task.FullName 'out'
+              $presetDir = Join-Path $outDir '${{ matrix.preset }}'
+              cmake --build $presetDir --config ${{ matrix.build_config }}
+              if ($LASTEXITCODE -ne 0) { throw "build failed: $root/$($task.Name)" }
+              $artifactBase = "$root-$($task.Name)"
+              $pkg = Join-Path $staging ($artifactBase + '-x64-win')
+              New-Item -ItemType Directory -Force $pkg | Out-Null
+              $binDir = Join-Path $presetDir '${{ matrix.build_config }}'
+              Copy-Item (Join-Path $binDir '*.exe') $pkg
+              $tripletDir = Join-Path $task.FullName 'vcpkg_installed'
+              $tripletBin = Join-Path (Join-Path $tripletDir '${{ matrix.triplet }}') 'bin'
+              if (Test-Path $tripletBin) { Copy-Item (Join-Path $tripletBin '*.dll') $pkg }
+              if (Test-Path (Join-Path $task.FullName 'shaders')) { Copy-Item -Recurse (Join-Path $task.FullName 'shaders') $pkg }
+              if (Test-Path (Join-Path $task.FullName 'materials.json')) { Copy-Item (Join-Path $task.FullName 'materials.json') $pkg }
+              Compress-Archive -Path (Join-Path $pkg '*') -DestinationPath (Join-Path $staging ($artifactBase + '-x64-win.zip')) -Force
+              Remove-Item -Recurse -Force $pkg
+              Write-Host "packed: $artifactBase-x64-win.zip"
             }
-            Write-Host "== configure $($task.Name) =="
-            cmake -S $task.FullName --preset ${{ matrix.preset }}
-            if ($LASTEXITCODE -ne 0) { throw "configure failed: $($task.Name)" }
-            Write-Host "== build $($task.Name) =="
-            $outDir = Join-Path $task.FullName 'out'
-            $presetDir = Join-Path $outDir '${{ matrix.preset }}'
-            cmake --build $presetDir --config ${{ matrix.build_config }}
-            if ($LASTEXITCODE -ne 0) { throw "build failed: $($task.Name)" }
-            # 打包：exe + 依赖 DLL + 运行时资源
-            $pkg = Join-Path $staging ($task.Name + '-x64-win')
-            New-Item -ItemType Directory -Force $pkg | Out-Null
-            $binDir = Join-Path $presetDir '${{ matrix.build_config }}'
-            Copy-Item (Join-Path $binDir '*.exe') $pkg
-            $tripletDir = Join-Path $task.FullName 'vcpkg_installed'
-            $tripletBin = Join-Path (Join-Path $tripletDir '${{ matrix.triplet }}') 'bin'
-            if (Test-Path $tripletBin) { Copy-Item (Join-Path $tripletBin '*.dll') $pkg }
-            if (Test-Path (Join-Path $task.FullName 'shaders')) { Copy-Item -Recurse (Join-Path $task.FullName 'shaders') $pkg }
-            if (Test-Path (Join-Path $task.FullName 'materials.json')) { Copy-Item (Join-Path $task.FullName 'materials.json') $pkg }
-            Compress-Archive -Path (Join-Path $pkg '*') -DestinationPath (Join-Path $staging ($task.Name + '-x64-win.zip')) -Force
-            Remove-Item -Recurse -Force $pkg
-            Write-Host "packed: $($task.Name)-x64-win.zip"
           }
 
       - name: Build and package tasks (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          set -euo pipefail
           has_platform() {
             local manifest="$1" key="$2" rc=0
             if [ -f "$manifest" ]; then
@@ -157,26 +271,28 @@ jobs:
           }
           staging=staging
           mkdir -p "$staging"
-          for task in OpenGL/*/; do
-            [ -f "$task/CMakeLists.txt" ] || continue
-            if ! has_platform "$task/platforms.json" "${{ matrix.platform_key }}"; then
-              echo "skip (${{ matrix.platform_key }} 不在平台标记中): $task"
-              continue
-            fi
-            echo "== configure $task =="
-            cmake -S "$task" --preset ${{ matrix.preset }}
-            echo "== build $task =="
-            cmake --build "$task/out/${{ matrix.preset }}"
-            # 打包：可执行文件 + 运行时资源
-            base="$(basename "$task")"
-            pkg_dir="$staging/$base-x64-linux"
-            mkdir -p "$pkg_dir"
-            find "$task/out/${{ matrix.preset }}" -maxdepth 1 -type f -executable -exec cp {} "$pkg_dir/" \;
-            [ -d "$task/shaders" ] && cp -r "$task/shaders" "$pkg_dir/"
-            [ -f "$task/materials.json" ] && cp "$task/materials.json" "$pkg_dir/"
-            tar -C "$staging" -czf "$staging/$base-x64-linux.tar.gz" "$base-x64-linux"
-            rm -rf "$pkg_dir"
-            echo "packed: $base-x64-linux.tar.gz"
+          for root in OpenGL Vulkan; do
+            for task in "$root"/*/; do
+              [ -f "$task/CMakeLists.txt" ] || continue
+              if ! has_platform "$task/platforms.json" "${{ matrix.platform_key }}"; then
+                echo "skip (${{ matrix.platform_key }} 不在平台标记中): $task"
+                continue
+              fi
+              echo "== configure $task =="
+              cmake -S "$task" --preset ${{ matrix.preset }}
+              echo "== build $task =="
+              cmake --build "$task/out/${{ matrix.preset }}"
+              base="$(basename "$task")"
+              artifact_base="$(basename "$root")-$base"
+              pkg_dir="$staging/$artifact_base-x64-linux"
+              mkdir -p "$pkg_dir"
+              find "$task/out/${{ matrix.preset }}" -maxdepth 1 -type f -executable -exec cp {} "$pkg_dir/" \;
+              [ -d "$task/shaders" ] && cp -r "$task/shaders" "$pkg_dir/"
+              [ -f "$task/materials.json" ] && cp "$task/materials.json" "$pkg_dir/"
+              tar -C "$staging" -czf "$staging/$artifact_base-x64-linux.tar.gz" "$artifact_base-x64-linux"
+              rm -rf "$pkg_dir"
+              echo "packed: $artifact_base-x64-linux.tar.gz"
+            done
           done
 
       - name: Upload package artifacts
@@ -188,7 +304,10 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: build
+    needs:
+      - prepare
+      - build
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -202,24 +321,29 @@ jobs:
       - name: Create and upload release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ github.event.inputs.tag }}"
-          else
-            TAG="${GITHUB_REF_NAME}"
-          fi
+          set -euo pipefail
+          title="RenderArena ${TAG} — OpenGL + Vulkan x64 构建"
           cat > release-notes.md <<EOF
-          Release $TAG —— 各任务 Release x64 构建产物（按 platforms.json 过滤平台适用性）。
+          # RenderArena ${TAG}
+
+          各测评项目的 x64 Release 构建产物，按 platforms.json 过滤平台适用性。
 
           包含：
-          - Windows：<任务目录名>-x64-win.zip（可执行文件 + 依赖 DLL + shaders/materials.json）
-          - Linux：<任务目录名>-x64-linux.tar.gz（可执行文件 + shaders/materials.json）
+          - OpenGL：OpenGL-<任务目录名>-x64-win.zip 或 OpenGL-<任务目录名>-x64-linux.tar.gz
+          - Vulkan：Vulkan-<任务目录名>-x64-win.zip 或 Vulkan-<任务目录名>-x64-linux.tar.gz
 
           运行要求：
-          - Windows：安装 VC++ 2015-2022 运行库（https://aka.ms/vs/17/release/vc_redist.x64.exe）；GPU 需支持 OpenGL 4.6。
-          - Linux：需要 X11 会话与 GPU 驱动（或 mesa 软件渲染）；二进制由 Ubuntu 24.04 工具链构建。
+          - Windows：安装 [VC++ 2015–2022 运行库](https://aka.ms/vs/17/release/vc_redist.x64.exe)。
+          - OpenGL 测评项目需要支持 OpenGL 4.6。
+          - Vulkan 测评项目需要可用的 Vulkan GPU 驱动。
+          - Linux：需要 X11 会话与 GPU 驱动（或 Mesa 软件渲染）；二进制由 Ubuntu 24.04 工具链构建。
           EOF
-          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes-file release-notes.md
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file release-notes.md
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file release-notes.md
           fi
           gh release upload "$TAG" assets/* --repo "$GITHUB_REPOSITORY" --clobber

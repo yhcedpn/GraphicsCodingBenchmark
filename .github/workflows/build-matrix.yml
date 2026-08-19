@@ -57,7 +57,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .ci-cache/vcpkg
-          key: vcpkg-${{ runner.os }}-${{ matrix.preset }}-${{ hashFiles('OpenGL/**/vcpkg.json', 'OpenGL/**/vcpkg-configuration.json', 'CMakePresets.json') }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.preset }}-${{ hashFiles('OpenGL/**/vcpkg.json', 'OpenGL/**/vcpkg-configuration.json', 'Vulkan/**/vcpkg.json', 'Vulkan/**/vcpkg-configuration.json', 'CMakePresets.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-${{ matrix.preset }}-
 
@@ -117,22 +117,24 @@ jobs:
               return $true
             }
           }
-          foreach ($task in Get-ChildItem -Path OpenGL -Directory) {
-            if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) {
-              Write-Host "skip (no CMakeLists.txt): $($task.Name)"
-              continue
+          foreach ($root in @('OpenGL', 'Vulkan')) {
+            foreach ($task in Get-ChildItem -Path $root -Directory) {
+              if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) {
+                Write-Host "skip (no CMakeLists.txt): $root/$($task.Name)"
+                continue
+              }
+              $manifest = Join-Path $task.FullName 'platforms.json'
+              if (-not (Test-Platform -Manifest $manifest -Key '${{ matrix.platform_key }}')) {
+                Write-Host "skip (${{ matrix.platform_key }} 不在平台标记中): $root/$($task.Name)"
+                continue
+              }
+              Write-Host "== configure $root/$($task.Name) =="
+              cmake -S $task.FullName --preset ${{ matrix.preset }}
+              if ($LASTEXITCODE -ne 0) { throw "configure failed: $root/$($task.Name)" }
+              Write-Host "== build $root/$($task.Name) =="
+              cmake --build (Join-Path $task.FullName 'out' "${{ matrix.preset }}") --config ${{ matrix.build_config }}
+              if ($LASTEXITCODE -ne 0) { throw "build failed: $root/$($task.Name)" }
             }
-            $manifest = Join-Path $task.FullName 'platforms.json'
-            if (-not (Test-Platform -Manifest $manifest -Key '${{ matrix.platform_key }}')) {
-              Write-Host "skip (${{ matrix.platform_key }} 不在平台标记中): $($task.Name)"
-              continue
-            }
-            Write-Host "== configure $($task.Name) =="
-            cmake -S $task.FullName --preset ${{ matrix.preset }}
-            if ($LASTEXITCODE -ne 0) { throw "configure failed: $($task.Name)" }
-            Write-Host "== build $($task.Name) =="
-            cmake --build (Join-Path $task.FullName 'out' "${{ matrix.preset }}") --config ${{ matrix.build_config }}
-            if ($LASTEXITCODE -ne 0) { throw "build failed: $($task.Name)" }
           }
 
       - name: Build all tasks (Linux)
@@ -151,14 +153,16 @@ jobs:
             fi
             return "$rc"
           }
-          for task in OpenGL/*/; do
-            [ -f "$task/CMakeLists.txt" ] || { echo "skip (no CMakeLists.txt): $task"; continue; }
-            if ! has_platform "$task/platforms.json" "${{ matrix.platform_key }}"; then
-              echo "skip (${{ matrix.platform_key }} 不在平台标记中): $task"
-              continue
-            fi
-            echo "== configure $task =="
-            cmake -S "$task" --preset ${{ matrix.preset }}
-            echo "== build $task =="
-            cmake --build "$task/out/${{ matrix.preset }}"
+          for root in OpenGL Vulkan; do
+            for task in "$root"/*/; do
+              [ -f "$task/CMakeLists.txt" ] || { echo "skip (no CMakeLists.txt): $task"; continue; }
+              if ! has_platform "$task/platforms.json" "${{ matrix.platform_key }}"; then
+                echo "skip (${{ matrix.platform_key }} 不在平台标记中): $task"
+                continue
+              fi
+              echo "== configure $task =="
+              cmake -S "$task" --preset ${{ matrix.preset }}
+              echo "== build $task =="
+              cmake --build "$task/out/${{ matrix.preset }}"
+            done
           done
