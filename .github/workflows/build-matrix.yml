@@ -93,16 +93,17 @@ jobs:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         run: |
           set -euo pipefail
+          # VoxelPBR 两份模型产物为 Windows 专有实现（main.cpp 使用 windows.h /
+          # GetModuleFileNameW，Linux 下无法编译）。该可移植性缺陷属于被测评内容，
+          # 不在环境层打补丁；因此这类任务被排除出 Linux 构建矩阵。
+          # 相关评审 issue：#17、#21。
+          LINUX_EXCLUDE_PATTERN='*VoxelPBR*'
           for task in OpenGL/*/; do
             [ -f "$task/CMakeLists.txt" ] || { echo "skip (no CMakeLists.txt): $task"; continue; }
-            case "$task" in
-              *VoxelPBR*)
-                # 已知：这两份 VoxelPBR 模型产物使用 windows.h / GetModuleFileNameW，
-                # 属于 Windows 专有实现（可移植性本身是被测量的内容），此处跳过。
-                echo "skip (Windows-only model output): $task"
-                continue
-                ;;
-            esac
+            if [[ "$task" == $LINUX_EXCLUDE_PATTERN ]]; then
+              echo "skip (Linux 排除，Windows 专有实现): $task"
+              continue
+            fi
             echo "== configure $task =="
             cmake -S "$task" --preset ${{ matrix.preset }}
             echo "== build $task =="
