@@ -7,18 +7,10 @@ on:
     paths:
       - 'OpenGL/**'
       - 'Vulkan/**'
-      - 'CMakePresets.json'
-      - '**/CMakeLists.txt'
-      - '**/platforms.json'
-      - '.github/workflows/build-matrix.yml'
   pull_request:
     paths:
       - 'OpenGL/**'
       - 'Vulkan/**'
-      - 'CMakePresets.json'
-      - '**/CMakeLists.txt'
-      - '**/platforms.json'
-      - '.github/workflows/build-matrix.yml'
   workflow_dispatch:
 
 permissions:
