@@ -75,6 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++ libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
           vcpkg_root="${VCPKG_INSTALLATION_ROOT:?VCPKG_INSTALLATION_ROOT is not set}"
           test -x "$vcpkg_root/vcpkg"
           cache_root="$GITHUB_WORKSPACE/.ci-cache/vcpkg"
@@ -142,7 +144,6 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          set -euo pipefail
           has_platform() {
             local manifest="$1" key="$2" rc=0
             if [ -f "$manifest" ]; then
