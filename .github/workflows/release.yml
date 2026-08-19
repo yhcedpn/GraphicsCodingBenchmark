@@ -1,0 +1,203 @@
+name: Release x64 Builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 发布版本号（如 v1.1），仅手动触发时使用
+        required: true
+        default: v1.1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            platform_key: windows
+            triplet: x64-windows
+            preset: windows-msvc-release
+            build_config: Release
+            shell: pwsh
+          - name: linux
+            os: ubuntu-latest
+            platform_key: linux
+            triplet: x64-linux
+            preset: linux-gcc-release
+            build_config: ""
+            shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/vcpkg"
+          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          "VCPKG_ROOT=$env:RUNNER_TEMP/vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Bootstrap vcpkg (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      # 构建并打包每个任务（Release x64，按 platforms.json 过滤平台适用性）。
+      # Windows：可执行文件 + vcpkg 运行时 DLL + shaders/materials.json → zip
+      # Linux：可执行文件 + shaders/materials.json → tar.gz
+      - name: Build and package tasks (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Test-Platform {
+            param([string]$Manifest, [string]$Key)
+            if (-not (Test-Path $Manifest)) { return $true }  # 无标记 → 全平台
+            try {
+              $j = Get-Content -Raw -Path $Manifest | ConvertFrom-Json
+              return ($j.build_platforms -contains $Key)
+            } catch {
+              Write-Warning "平台标记无法解析 $Manifest，按全平台处理"
+              return $true
+            }
+          }
+          $staging = 'staging'
+          New-Item -ItemType Directory -Force $staging | Out-Null
+          foreach ($task in Get-ChildItem -Path OpenGL -Directory) {
+            if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) { continue }
+            $manifest = Join-Path $task.FullName 'platforms.json'
+            if (-not (Test-Platform -Manifest $manifest -Key '${{ matrix.platform_key }}')) {
+              Write-Host "skip (${{ matrix.platform_key }} 不在平台标记中): $($task.Name)"
+              continue
+            }
+            Write-Host "== configure $($task.Name) =="
+            cmake -S $task.FullName --preset ${{ matrix.preset }}
+            if ($LASTEXITCODE -ne 0) { throw "configure failed: $($task.Name)" }
+            Write-Host "== build $($task.Name) =="
+            $outDir = Join-Path $task.FullName 'out'
+            $presetDir = Join-Path $outDir '${{ matrix.preset }}'
+            cmake --build $presetDir --config ${{ matrix.build_config }}
+            if ($LASTEXITCODE -ne 0) { throw "build failed: $($task.Name)" }
+            # 打包：exe + 依赖 DLL + 运行时资源
+            $pkg = Join-Path $staging ($task.Name + '-x64-win')
+            New-Item -ItemType Directory -Force $pkg | Out-Null
+            $binDir = Join-Path $presetDir '${{ matrix.build_config }}'
+            Copy-Item (Join-Path $binDir '*.exe') $pkg
+            $tripletDir = Join-Path $task.FullName 'vcpkg_installed'
+            $tripletBin = Join-Path (Join-Path $tripletDir '${{ matrix.triplet }}') 'bin'
+            if (Test-Path $tripletBin) { Copy-Item (Join-Path $tripletBin '*.dll') $pkg }
+            if (Test-Path (Join-Path $task.FullName 'shaders')) { Copy-Item -Recurse (Join-Path $task.FullName 'shaders') $pkg }
+            if (Test-Path (Join-Path $task.FullName 'materials.json')) { Copy-Item (Join-Path $task.FullName 'materials.json') $pkg }
+            Compress-Archive -Path (Join-Path $pkg '*') -DestinationPath (Join-Path $staging ($task.Name + '-x64-win.zip')) -Force
+            Remove-Item -Recurse -Force $pkg
+            Write-Host "packed: $($task.Name)-x64-win.zip"
+          }
+
+      - name: Build and package tasks (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: |
+          set -euo pipefail
+          has_platform() {
+            local manifest="$1" key="$2" rc=0
+            if [ -f "$manifest" ]; then
+              jq -e --arg p "$key" '.build_platforms | index($p) != null' "$manifest" >/dev/null 2>&1 || rc=$?
+              if [ "$rc" -eq 2 ]; then
+                echo "warning: 平台标记无法解析 $manifest，按全平台处理"
+                rc=0
+              fi
+            fi
+            return "$rc"
+          }
+          staging=staging
+          mkdir -p "$staging"
+          for task in OpenGL/*/; do
+            [ -f "$task/CMakeLists.txt" ] || continue
+            if ! has_platform "$task/platforms.json" "${{ matrix.platform_key }}"; then
+              echo "skip (${{ matrix.platform_key }} 不在平台标记中): $task"
+              continue
+            fi
+            echo "== configure $task =="
+            cmake -S "$task" --preset ${{ matrix.preset }}
+            echo "== build $task =="
+            cmake --build "$task/out/${{ matrix.preset }}"
+            # 打包：可执行文件 + 运行时资源
+            base="$(basename "$task")"
+            pkg_dir="$staging/$base-x64-linux"
+            mkdir -p "$pkg_dir"
+            find "$task/out/${{ matrix.preset }}" -maxdepth 1 -type f -executable -exec cp {} "$pkg_dir/" \;
+            [ -d "$task/shaders" ] && cp -r "$task/shaders" "$pkg_dir/"
+            [ -f "$task/materials.json" ] && cp "$task/materials.json" "$pkg_dir/"
+            tar -C "$staging" -czf "$staging/$base-x64-linux.tar.gz" "$base-x64-linux"
+            rm -rf "$pkg_dir"
+            echo "packed: $base-x64-linux.tar.gz"
+          done
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ matrix.platform_key }}
+          path: staging
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Create and upload release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          cat > release-notes.md <<EOF
+          Release $TAG —— 各任务 Release x64 构建产物（按 platforms.json 过滤平台适用性）。
+
+          包含：
+          - Windows：<任务目录名>-x64-win.zip（可执行文件 + 依赖 DLL + shaders/materials.json）
+          - Linux：<任务目录名>-x64-linux.tar.gz（可执行文件 + shaders/materials.json）
+
+          运行要求：
+          - Windows：安装 VC++ 2015-2022 运行库（https://aka.ms/vs/17/release/vc_redist.x64.exe）；GPU 需支持 OpenGL 4.6。
+          - Linux：需要 X11 会话与 GPU 驱动（或 mesa 软件渲染）；二进制由 Ubuntu 24.04 工具链构建。
+          EOF
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes-file release-notes.md
+          fi
+          gh release upload "$TAG" assets/* --repo "$GITHUB_REPOSITORY" --clobber
