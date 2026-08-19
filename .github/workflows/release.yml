@@ -258,12 +258,19 @@ jobs:
               New-Item -ItemType Directory -Force $pkg | Out-Null
               $binDir = Join-Path $presetDir '${{ matrix.build_config }}'
               Copy-Item (Join-Path $binDir '*.exe') $pkg
-              $tripletDir = Join-Path $task.FullName 'vcpkg_installed'
+              # DLL 收集：先取构建输出目录（Release/，构建时 vcpkg 会把 DLL 复制过去），
+              # 再取 out/<preset>/vcpkg_installed（CI 中 vcpkg 安装在构建目录，
+              # 而非任务源码目录，旧路径恒不命中导致漏拷 DLL）。
+              $releaseDlls = Join-Path $binDir '*.dll'
+              if (Test-Path $releaseDlls) { Copy-Item $releaseDlls $pkg }
+              $tripletDir = Join-Path $presetDir 'vcpkg_installed'
               $tripletBin = Join-Path (Join-Path $tripletDir '${{ matrix.triplet }}') 'bin'
               if (Test-Path $tripletBin) { Copy-Item (Join-Path $tripletBin '*.dll') $pkg }
               if (Test-Path (Join-Path $task.FullName 'shaders')) { Copy-Item -Recurse (Join-Path $task.FullName 'shaders') $pkg }
               if (Test-Path (Join-Path $task.FullName 'materials.json')) { Copy-Item (Join-Path $task.FullName 'materials.json') $pkg }
-              Compress-Archive -Path (Join-Path $pkg '*') -DestinationPath (Join-Path $staging ($artifactBase + '-x64-win.zip')) -Force
+              # 用系统自带 bsdtar 打包为 zip（比 .NET 单线程 Compress-Archive 快数倍）。
+              tar -a -c -f (Join-Path $staging ($artifactBase + '-x64-win.zip')) -C $pkg '.'
+              if ($LASTEXITCODE -ne 0) { throw "tar 打包失败: $artifactBase" }
               Remove-Item -Recurse -Force $pkg
               Write-Host "packed: $artifactBase-x64-win.zip"
             }
