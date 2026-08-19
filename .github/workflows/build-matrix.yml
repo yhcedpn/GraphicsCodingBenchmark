@@ -32,6 +32,7 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -43,32 +44,56 @@ jobs:
             build_config: Release
             shell: pwsh
           - name: linux-gcc-release
-            os: ubuntu-latest
+            os: ubuntu-24.04
             platform_key: linux
             preset: linux-gcc-release
             build_config: ""
             shell: bash
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Bootstrap vcpkg (Windows)
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v6
+        with:
+          path: .ci-cache/vcpkg
+          key: vcpkg-${{ runner.os }}-${{ matrix.preset }}-${{ hashFiles('OpenGL/**/vcpkg.json', 'OpenGL/**/vcpkg-configuration.json', 'CMakePresets.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ matrix.preset }}-
+
+      - name: Configure vcpkg (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          git clone --depth=1 https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/vcpkg"
-          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
-          "VCPKG_ROOT=$env:RUNNER_TEMP/vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ErrorActionPreference = 'Stop'
+          $vcpkg = Join-Path $env:VCPKG_INSTALLATION_ROOT 'vcpkg.exe'
+          if (-not (Test-Path $vcpkg)) { throw "vcpkg not found: $vcpkg" }
+          $cacheRoot = Join-Path $env:GITHUB_WORKSPACE '.ci-cache\vcpkg'
+          $binaryCache = Join-Path $cacheRoot 'binary'
+          $downloads = Join-Path $cacheRoot 'downloads'
+          New-Item -ItemType Directory -Force -Path $binaryCache, $downloads | Out-Null
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "VCPKG_DEFAULT_BINARY_CACHE=$binaryCache" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "VCPKG_DOWNLOADS=$downloads" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "VCPKG_DISABLE_METRICS=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $vcpkg version
 
-      - name: Bootstrap vcpkg (Linux)
+      - name: Configure vcpkg (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build g++
-          git clone --depth=1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
-          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+          set -euo pipefail
+          vcpkg_root="${VCPKG_INSTALLATION_ROOT:?VCPKG_INSTALLATION_ROOT is not set}"
+          test -x "$vcpkg_root/vcpkg"
+          cache_root="$GITHUB_WORKSPACE/.ci-cache/vcpkg"
+          mkdir -p "$cache_root/binary" "$cache_root/downloads"
+          {
+            echo "VCPKG_ROOT=$vcpkg_root"
+            echo "VCPKG_DEFAULT_BINARY_CACHE=$cache_root/binary"
+            echo "VCPKG_DOWNLOADS=$cache_root/downloads"
+            echo "VCPKG_DISABLE_METRICS=1"
+          } >> "$GITHUB_ENV"
+          "$vcpkg_root/vcpkg" version
 
       # 通用平台筛选：每个任务目录用 platforms.json 声明可构建平台
       #（{"build_platforms": ["windows","linux"]}，缺失视为全平台支持）。
@@ -77,8 +102,6 @@ jobs:
       - name: Build all tasks (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        env:
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         run: |
           $ErrorActionPreference = 'Stop'
           function Test-Platform {
@@ -113,8 +136,6 @@ jobs:
       - name: Build all tasks (Linux)
         if: runner.os == 'Linux'
         shell: bash
-        env:
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         run: |
           set -euo pipefail
           has_platform() {
