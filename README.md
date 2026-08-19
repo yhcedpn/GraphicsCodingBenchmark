@@ -10,16 +10,6 @@
 
 - `OpenGL/`：现有的 OpenGL 编程任务（用 OpenGL 4.6 Core Profile）及不同模型的完成结果
 
-## 如何构建
-
-### 方式一：直接用 Visual Studio
-
-1. 安装 Visual Studio 2026，确保安装 `使用 C++ 的桌面开发` 模块。
-2. 确保本机已正确集成 `vcpkg` 包管理器，并且 MSVC 版本为 v145。
-3. 克隆本仓库，打开 `GraphicsCodingBenchmark.slnx`，构建并运行你想测试的项目，只可选择 `Debug|x64` 或 `Release|x64` 构建配置。
-
-最好是在 Windows 11 系统运行，安装最新的 Windows SDK。另外，确保你使用的 GPU 支持 OpenGL 4.6 等最新的图形 API。这也是作者使用的环境。
-
 ## 适合用来观察什么
 
 - 不同模型在简单、中等、复杂图形编程任务上的稳定性差异
