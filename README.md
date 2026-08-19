@@ -13,7 +13,7 @@
 项目文档位于 [GitHub Wiki](https://github.com/yhcedpn/RenderArena/wiki)，并由仓库 `wiki/` 目录自动同步维护。
 
 - [Wiki 首页](https://github.com/yhcedpn/RenderArena/wiki)：项目介绍与构建指南
-- [v1 —— OpenGL 图形编程任务](https://github.com/yhcedpn/RenderArena/wiki/v1-BenchmarkTasks)：v1 版本的任务清单、Release v1 与相关评审 issue
+- [OpenGL 图形编程任务](https://github.com/yhcedpn/RenderArena/wiki/OpenGL-BenchmarkTasks)：任务清单、Release 产物与相关评审 issue
 
 ## 构建
 
