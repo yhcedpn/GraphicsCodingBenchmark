@@ -9,6 +9,7 @@ on:
       - 'Vulkan/**'
       - 'CMakePresets.json'
       - '**/CMakeLists.txt'
+      - '**/platforms.json'
       - '.github/workflows/build-matrix.yml'
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - 'Vulkan/**'
       - 'CMakePresets.json'
       - '**/CMakeLists.txt'
+      - '**/platforms.json'
       - '.github/workflows/build-matrix.yml'
   workflow_dispatch:
 
@@ -36,11 +38,13 @@ jobs:
         include:
           - name: windows-msvc-release
             os: windows-latest
+            platform_key: windows
             preset: windows-msvc-release
             build_config: Release
             shell: pwsh
           - name: linux-gcc-release
             os: ubuntu-latest
+            platform_key: linux
             preset: linux-gcc-release
             build_config: ""
             shell: bash
@@ -66,6 +70,10 @@ jobs:
           "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
           echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
 
+      # 通用平台筛选：每个任务目录用 platforms.json 声明可构建平台
+      #（{"build_platforms": ["windows","linux"]}，缺失视为全平台支持）。
+      # 平台专有实现（如 VoxelPBR 使用 windows.h / GetModuleFileNameW）只声明
+      # "windows"，本矩阵会据此在 Linux 上跳过，无需逐个硬编码。
       - name: Build all tasks (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -73,9 +81,25 @@ jobs:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         run: |
           $ErrorActionPreference = 'Stop'
+          function Test-Platform {
+            param([string]$Manifest, [string]$Key)
+            if (-not (Test-Path $Manifest)) { return $true }  # 无标记 → 全平台
+            try {
+              $j = Get-Content -Raw -Path $Manifest | ConvertFrom-Json
+              return ($j.build_platforms -contains $Key)
+            } catch {
+              Write-Warning "平台标记无法解析 $Manifest，按全平台处理"
+              return $true
+            }
+          }
           foreach ($task in Get-ChildItem -Path OpenGL -Directory) {
             if (-not (Test-Path (Join-Path $task.FullName 'CMakeLists.txt'))) {
               Write-Host "skip (no CMakeLists.txt): $($task.Name)"
+              continue
+            }
+            $manifest = Join-Path $task.FullName 'platforms.json'
+            if (-not (Test-Platform -Manifest $manifest -Key '${{ matrix.platform_key }}')) {
+              Write-Host "skip (${{ matrix.platform_key }} 不在平台标记中): $($task.Name)"
               continue
             }
             Write-Host "== configure $($task.Name) =="
@@ -93,15 +117,21 @@ jobs:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         run: |
           set -euo pipefail
-          # VoxelPBR 两份模型产物为 Windows 专有实现（main.cpp 使用 windows.h /
-          # GetModuleFileNameW，Linux 下无法编译）。该可移植性缺陷属于被测评内容，
-          # 不在环境层打补丁；因此这类任务被排除出 Linux 构建矩阵。
-          # 相关评审 issue：#17、#21。
-          LINUX_EXCLUDE_PATTERN='*VoxelPBR*'
+          has_platform() {
+            local manifest="$1" key="$2" rc=0
+            if [ -f "$manifest" ]; then
+              jq -e --arg p "$key" '.build_platforms | index($p) != null' "$manifest" >/dev/null 2>&1 || rc=$?
+              if [ "$rc" -eq 2 ]; then
+                echo "warning: 平台标记无法解析 $manifest，按全平台处理"
+                rc=0
+              fi
+            fi
+            return "$rc"
+          }
           for task in OpenGL/*/; do
             [ -f "$task/CMakeLists.txt" ] || { echo "skip (no CMakeLists.txt): $task"; continue; }
-            if [[ "$task" == $LINUX_EXCLUDE_PATTERN ]]; then
-              echo "skip (Linux 排除，Windows 专有实现): $task"
+            if ! has_platform "$task/platforms.json" "${{ matrix.platform_key }}"; then
+              echo "skip (${{ matrix.platform_key }} 不在平台标记中): $task"
               continue
             fi
             echo "== configure $task =="

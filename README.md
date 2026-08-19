@@ -17,7 +17,7 @@
 - Windows（现有）：`RenderArena.slnx` + VS2026 路径完全不受影响。
 - 通用：在任意任务目录执行 `cmake --preset windows-msvc-release` / `cmake --preset linux-gcc-release`（预设定义见仓库根 `CMakePresets.json`，Debug 同理）。
 - 依赖由各任务目录 `vcpkg.json` manifest 管理，vcpkg 按 `x64-windows` / `x64-linux` triplet 自动安装。
-- CI 的 [Build Matrix](.github/workflows/build-matrix.yml) 工作流负责双平台编译验证；Linux 上已知的 Windows 专有模型产物（如两份 VoxelPBR）会跳过并如实记录，其可移植性属于被测评内容。
+- 每个任务目录以 `platforms.json` 声明可构建平台（`{"build_platforms": ["windows","linux"]}`，缺失视为全平台）。CI 的 [Build Matrix](.github/workflows/build-matrix.yml) 据此跳过不适合当前平台的任务；平台专有实现（如两份 VoxelPBR 的 Windows 专有代码）在 Linux 上会被自动跳过并如实记录，可移植性本身属于被测评内容。
 - 后续新增的 Vulkan 等图形 API 任务沿用同一构建方案（新增 `Vulkan/` 目录即可）。
 
 ## 文档（Wiki）
