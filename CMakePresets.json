@@ -5,9 +5,8 @@
     {
       "name": "windows-msvc-debug",
       "displayName": "Windows (MSVC v145) Debug",
-      "description": "Windows 下使用 VS2026 生成器 + vcpkg x64-windows triplet。",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
+      "description": "Windows 下使用 Ninja Multi-Config 生成器 + vcpkg x64-windows triplet。",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/out/${presetName}",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
@@ -18,9 +17,8 @@
     {
       "name": "windows-msvc-release",
       "displayName": "Windows (MSVC v145) Release",
-      "description": "Windows 下使用 VS2026 生成器 + vcpkg x64-windows triplet。",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
+      "description": "Windows 下使用 Ninja Multi-Config 生成器 + vcpkg x64-windows triplet。",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/out/${presetName}",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
