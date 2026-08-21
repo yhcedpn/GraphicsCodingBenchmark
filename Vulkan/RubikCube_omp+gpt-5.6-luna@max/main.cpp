@@ -1,3 +1,9 @@
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 #define GLFW_INCLUDE_VULKAN
 #include <volk.h>
 #include <GLFW/glfw3.h>
@@ -20,6 +26,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <filesystem>
 #include "shaders.inc"
 
 #if defined(_WIN32)
@@ -31,9 +38,11 @@
 namespace {
 
 using Json = nlohmann::json;
+namespace fs = std::filesystem;
 
 constexpr uint32_t kFramesInFlight = 2;
 constexpr float kPi = 3.14159265358979323846f;
+constexpr float kDirectionalLightIntensity = 4.0f;
 
 [[noreturn]] void fail(const std::string& message) {
     throw std::runtime_error(message);
@@ -252,10 +261,55 @@ double readFiniteNumber(const Json& value, const std::string& context, double mi
     return number;
 }
 
-MaterialConfigSet loadMaterialConfig() {
-    std::ifstream file("materials.json");
+fs::path findMaterialConfig(const char* executablePath) {
+    std::vector<fs::path> searchDirectories;
+    std::error_code error;
+    const fs::path currentDirectory = fs::current_path(error);
+    if (!error) {
+        searchDirectories.push_back(currentDirectory);
+    }
+
+#if defined(_WIN32)
+    std::array<wchar_t, 32768> executableBuffer{};
+    const DWORD length = GetModuleFileNameW(nullptr, executableBuffer.data(),
+                                             static_cast<DWORD>(executableBuffer.size()));
+    if (length > 0 && length < executableBuffer.size()) {
+        searchDirectories.push_back(fs::path(std::wstring(executableBuffer.data(), length)).parent_path());
+    }
+#endif
+
+    if (executablePath != nullptr && executablePath[0] != '\0') {
+        const fs::path argumentPath(executablePath);
+        const fs::path absolutePath = fs::absolute(argumentPath, error);
+        if (!error) {
+            searchDirectories.push_back(absolutePath.parent_path());
+        }
+    }
+
+    for (const fs::path& directory : searchDirectories) {
+        fs::path cursor = directory;
+        for (int depth = 0; depth < 4 && !cursor.empty(); ++depth) {
+            const fs::path candidate = cursor / "materials.json";
+            error.clear();
+            if (fs::is_regular_file(candidate, error) && !error) {
+                return candidate;
+            }
+            const fs::path parent = cursor.parent_path();
+            if (parent == cursor) {
+                break;
+            }
+            cursor = parent;
+        }
+    }
+
+    fail("配置错误：找不到 materials.json；请将它部署到可执行文件目录或项目目录");
+}
+
+MaterialConfigSet loadMaterialConfig(const char* executablePath) {
+    const fs::path materialPath = findMaterialConfig(executablePath);
+    std::ifstream file(materialPath);
     if (!file) {
-        fail("配置错误：无法打开当前目录的 materials.json");
+        fail("配置错误：无法打开 materials.json：" + materialPath.string());
     }
 
     Json root;
@@ -501,8 +555,8 @@ static_assert(sizeof(PushConstants) == 176);
 
 class RubikCubeApp {
 public:
-    RubikCubeApp() {
-        config = loadMaterialConfig();
+    explicit RubikCubeApp(const char* executablePath) {
+        config = loadMaterialConfig(executablePath);
         initializeWindow();
         initializeVulkan();
     }
@@ -515,8 +569,13 @@ public:
     RubikCubeApp& operator=(const RubikCubeApp&) = delete;
 
     void run() {
+        double previousTime = glfwGetTime();
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+            const double currentTime = glfwGetTime();
+            const float deltaTime = static_cast<float>(std::min(currentTime - previousTime, 0.1));
+            previousTime = currentTime;
+            processInput(deltaTime);
             drawFrame();
         }
         if (device != VK_NULL_HANDLE) {
@@ -549,7 +608,16 @@ private:
     bool glfwInitialized{false};
     bool volkInitialized{false};
     bool framebufferResized{false};
-
+    Vec3 cameraPosition{5.0f, 4.0f, 6.0f};
+    Vec3 cameraFront{};
+    Vec3 cameraRight{};
+    Vec3 cameraUp{};
+    float cameraYaw{};
+    float cameraPitch{};
+    bool mouseCaptured{false};
+    bool firstMouseSample{true};
+    double lastMouseX{};
+    double lastMouseY{};
     VkInstance instance{VK_NULL_HANDLE};
     VkSurfaceKHR surface{VK_NULL_HANDLE};
     VkPhysicalDevice physicalDevice{VK_NULL_HANDLE};
@@ -590,6 +658,108 @@ private:
         }
     }
 
+    void updateCameraVectors() {
+        const float cosPitch = std::cos(cameraPitch);
+        cameraFront = normalize({
+            std::cos(cameraYaw) * cosPitch,
+            std::sin(cameraPitch),
+            std::sin(cameraYaw) * cosPitch,
+        });
+        cameraRight = normalize(cross(cameraFront, {0.0f, 1.0f, 0.0f}));
+        cameraUp = normalize(cross(cameraRight, cameraFront));
+    }
+
+    void initializeCamera() {
+        const Vec3 direction = normalize(Vec3{0.0f, 0.0f, 0.0f} - cameraPosition);
+        cameraYaw = std::atan2(direction.z, direction.x);
+        cameraPitch = std::asin(direction.y);
+        updateCameraVectors();
+    }
+
+    void setMouseCapture(bool capture) {
+        mouseCaptured = capture;
+        firstMouseSample = true;
+        glfwSetInputMode(window, GLFW_CURSOR, capture ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    }
+
+    void processInput(float deltaTime) {
+        float speed = 4.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
+            glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+            speed *= 3.0f;
+        }
+        Vec3 movement{};
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            movement = movement + cameraFront * speed;
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            movement = movement - cameraFront * speed;
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            movement = movement + cameraRight * speed;
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            movement = movement - cameraRight * speed;
+        }
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+            movement.y += speed;
+        }
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+            movement.y -= speed;
+        }
+        cameraPosition = cameraPosition + movement;
+    }
+
+    void handleKey(int key, int action) {
+        if (action != GLFW_PRESS || key != GLFW_KEY_ESCAPE) {
+            return;
+        }
+        if (mouseCaptured) {
+            setMouseCapture(false);
+        } else {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+    }
+
+    void handleCursor(double xPosition, double yPosition) {
+        if (!mouseCaptured) {
+            return;
+        }
+        if (firstMouseSample) {
+            lastMouseX = xPosition;
+            lastMouseY = yPosition;
+            firstMouseSample = false;
+            return;
+        }
+        constexpr float sensitivity = 0.0025f;
+        cameraYaw += static_cast<float>(xPosition - lastMouseX) * sensitivity;
+        cameraPitch += static_cast<float>(lastMouseY - yPosition) * sensitivity;
+        cameraPitch = std::clamp(cameraPitch, -kPi * 0.5f + 0.01f, kPi * 0.5f - 0.01f);
+        lastMouseX = xPosition;
+        lastMouseY = yPosition;
+        updateCameraVectors();
+    }
+
+    static void keyCallback(GLFWwindow* inputWindow, int key, int, int action, int) {
+        if (auto* application = static_cast<RubikCubeApp*>(glfwGetWindowUserPointer(inputWindow))) {
+            application->handleKey(key, action);
+        }
+    }
+
+    static void cursorPositionCallback(GLFWwindow* inputWindow, double xPosition, double yPosition) {
+        if (auto* application = static_cast<RubikCubeApp*>(glfwGetWindowUserPointer(inputWindow))) {
+            application->handleCursor(xPosition, yPosition);
+        }
+    }
+
+    static void mouseButtonCallback(GLFWwindow* inputWindow, int button, int action, int) {
+        if (auto* application = static_cast<RubikCubeApp*>(glfwGetWindowUserPointer(inputWindow));
+            application != nullptr && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS &&
+            !application->mouseCaptured) {
+            application->setMouseCapture(true);
+        }
+    }
+
     void initializeWindow() {
         if (glfwInit() != GLFW_TRUE) {
             fail("GLFW 初始化失败");
@@ -603,6 +773,11 @@ private:
         }
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        glfwSetKeyCallback(window, keyCallback);
+        glfwSetCursorPosCallback(window, cursorPositionCallback);
+        glfwSetMouseButtonCallback(window, mouseButtonCallback);
+        initializeCamera();
+        setMouseCapture(true);
     }
 
     void initializeVulkan() {
@@ -1617,8 +1792,7 @@ private:
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        const Vec3 camera = {5.0f, 4.0f, 6.0f};
-        const Mat4 view = lookAtMatrix(camera, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+        const Mat4 view = lookAtMatrix(cameraPosition, cameraPosition + cameraFront, cameraUp);
         const float aspect = static_cast<float>(swapchainExtent.width) / static_cast<float>(swapchainExtent.height);
         const Mat4 projection = perspectiveMatrix(60.0f * kPi / 180.0f, aspect, 0.1f, 100.0f);
         const Mat4 viewProjection = multiply(projection, view);
@@ -1632,8 +1806,8 @@ private:
                 viewProjection,
                 model,
                 {material.config.metallic, material.config.roughness, material.config.ambientOcclusion, material.config.normalStrength},
-                {camera.x, camera.y, camera.z, 1.0f},
-                {lightDirection.x, lightDirection.y, lightDirection.z, 1.0f},
+                {cameraPosition.x, cameraPosition.y, cameraPosition.z, 1.0f},
+                {lightDirection.x, lightDirection.y, lightDirection.z, kDirectionalLightIntensity},
             };
             const std::array<VkDescriptorImageInfo, 3> imageInfos = {{
                 {sampler, material.baseColor.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
@@ -1809,9 +1983,9 @@ private:
 
 } // 命名空间
 
-int main() {
+int main(int argc, char** argv) {
     try {
-        RubikCubeApp application;
+        RubikCubeApp application(argc > 0 ? argv[0] : nullptr);
         application.run();
         return 0;
     } catch (const std::exception& exception) {
