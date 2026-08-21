@@ -2,14 +2,18 @@
   <Configurations>
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="OpenGL/CachedCubePipelines_Codex+gpt-5.4@xhigh/CachedCubePipelines_Codex+gpt-5.4@xhigh.vcxproj" Id="07e7c3ae-736e-4bea-b4f8-f8aefeed9d79" />
-  <Project Path="OpenGL/CachedCubePipelines_Codex+gpt-5.5@xhigh/CachedCubePipelines_Codex+gpt-5.5@xhigh.vcxproj" Id="4d12652a-59e2-4653-a506-3a0ef5a39baa" />
-  <Project Path="OpenGL/HelloWindow_Codex+gpt-5.4@xhigh/HelloWindow_Codex+gpt-5.4@xhigh.vcxproj" Id="03fb4563-5505-4f1f-9ec3-34a603fbc9cd" />
-  <Project Path="OpenGL/HelloWindow_Codex+gpt-5.5@xhigh/HelloWindow_Codex+gpt-5.5@xhigh.vcxproj" Id="4d0b18b4-41d0-4b66-a71e-9e8141d7ef62" />
-  <Project Path="OpenGL/ProceduralDeferredRenderer_Codex+gpt-5.4@xhigh/ProceduralDeferredRenderer_Codex+gpt-5.4@xhigh.vcxproj" Id="5f0695e7-1a75-4fe0-9ebf-d6aae2a536c2" />
-  <Project Path="OpenGL/ProceduralDeferredRenderer_Codex+gpt-5.6-terra@xhigh/ProceduralDeferredRenderer_Codex+gpt-5.6-terra@xhigh.vcxproj" Id="6e9209ef-7bfe-4810-92a5-8ea18a4bbf87" />
-  <Project Path="OpenGL/VoxelPBRFrustumCulling_Codex+gpt-5.6-terra@max/VoxelPBRFrustumCulling_Codex+gpt-5.6-terra@max.vcxproj" Id="3bbc12fe-2914-4c70-a39c-28fc6ec71056" />
-  <Project Path="OpenGL/VoxelPBRFrustumCulling_omp+gpt-5.6-luna@max/VoxelPBRFrustumCulling_omp+gpt-5.6-luna@max.vcxproj" Id="0a6ef5d8-448e-4037-b944-7311e8b934ea" />
-  <Project Path="Vulkan/VulkanWindow_omp+deepseek-v4-flash-0731@max/VulkanWindow_omp+deepseek-v4-flash-0731@max.vcxproj" Id="a9316eef-4f53-4cec-a30b-8ec10374de4e" />
-  <Project Path="Vulkan/VulkanWindow_omp+gpt-5.6-luna@max/VulkanWindow_omp+gpt-5.6-luna@max.vcxproj" Id="ad991dbc-b564-412a-b74f-a8b1592de289" />
+  <Folder Name="/OpenGL/">
+    <Project Path="OpenGL/CachedCubePipelines_Codex+gpt-5.4@xhigh/CachedCubePipelines_Codex+gpt-5.4@xhigh.vcxproj" Id="07e7c3ae-736e-4bea-b4f8-f8aefeed9d79" />
+    <Project Path="OpenGL/CachedCubePipelines_Codex+gpt-5.5@xhigh/CachedCubePipelines_Codex+gpt-5.5@xhigh.vcxproj" Id="4d12652a-59e2-4653-a506-3a0ef5a39baa" />
+    <Project Path="OpenGL/HelloWindow_Codex+gpt-5.4@xhigh/HelloWindow_Codex+gpt-5.4@xhigh.vcxproj" Id="03fb4563-5505-4f1f-9ec3-34a603fbc9cd" />
+    <Project Path="OpenGL/HelloWindow_Codex+gpt-5.5@xhigh/HelloWindow_Codex+gpt-5.5@xhigh.vcxproj" Id="4d0b18b4-41d0-4b66-a71e-9e8141d7ef62" />
+    <Project Path="OpenGL/ProceduralDeferredRenderer_Codex+gpt-5.4@xhigh/ProceduralDeferredRenderer_Codex+gpt-5.4@xhigh.vcxproj" Id="5f0695e7-1a75-4fe0-9ebf-d6aae2a536c2" />
+    <Project Path="OpenGL/ProceduralDeferredRenderer_Codex+gpt-5.6-terra@xhigh/ProceduralDeferredRenderer_Codex+gpt-5.6-terra@xhigh.vcxproj" Id="6e9209ef-7bfe-4810-92a5-8ea18a4bbf87" />
+    <Project Path="OpenGL/VoxelPBRFrustumCulling_Codex+gpt-5.6-terra@max/VoxelPBRFrustumCulling_Codex+gpt-5.6-terra@max.vcxproj" Id="3bbc12fe-2914-4c70-a39c-28fc6ec71056" />
+    <Project Path="OpenGL/VoxelPBRFrustumCulling_omp+gpt-5.6-luna@max/VoxelPBRFrustumCulling_omp+gpt-5.6-luna@max.vcxproj" Id="0a6ef5d8-448e-4037-b944-7311e8b934ea" />
+  </Folder>
+  <Folder Name="/Vulkan/">
+    <Project Path="Vulkan/VulkanWindow_omp+deepseek-v4-flash-0731@max/VulkanWindow_omp+deepseek-v4-flash-0731@max.vcxproj" Id="a9316eef-4f53-4cec-a30b-8ec10374de4e" />
+    <Project Path="Vulkan/VulkanWindow_omp+gpt-5.6-luna@max/VulkanWindow_omp+gpt-5.6-luna@max.vcxproj" Id="ad991dbc-b564-412a-b74f-a8b1592de289" />
+  </Folder>
 </Solution>
