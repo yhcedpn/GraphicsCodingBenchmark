@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{a155928b-4e2b-4d98-b6fe-22ebc3a30ac9}</ProjectGuid>
+    <RootNamespace>VulkanWindowCopilotglm52max</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgAutoLink>false</VcpkgAutoLink>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\include\vma;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\glfw3dll.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\volk.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\shaderc.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\shaderc_util.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\SPIRV-Tools-opt.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\SPIRVd.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\glslangd.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\lib\SPIRV-Tools.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\include\vma;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\glfw3dll.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\volk.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\shaderc.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\shaderc_util.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\SPIRV-Tools-opt.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\SPIRV.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\glslang.lib;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\lib\SPIRV-Tools.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="vma_impl.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="VulkanWindow_TASK.md" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <Target Name="CopyVulkanLoader" AfterTargets="Build">
+    <Copy Condition="'$(Configuration)'=='Debug'"
+          SourceFiles="$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\debug\bin\vulkan-1.dll"
+          DestinationFiles="$(OutDir)vulkan-1.dll" />
+    <Copy Condition="'$(Configuration)'=='Release'"
+          SourceFiles="$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\bin\vulkan-1.dll"
+          DestinationFiles="$(OutDir)vulkan-1.dll" />
+    <ItemGroup>
+      <FileWrites Include="$(OutDir)vulkan-1.dll" />
+    </ItemGroup>
+  </Target>
+</Project>
