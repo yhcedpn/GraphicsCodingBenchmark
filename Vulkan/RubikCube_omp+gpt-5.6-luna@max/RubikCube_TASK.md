@@ -10,7 +10,7 @@
 
 - Vulkan 1.4 核心 API、动态渲染和现代同步 API 的使用；
 - Push Descriptors 扩展的正确启用与资源绑定；
-- 主机图像拷贝和 GPU 资源生命周期管理；
+- 主机图像拷贝或 Vulkan 1.4 传输队列的正确使用与 GPU 资源生命周期管理；
 - PBR 光照、sRGB 颜色空间和法线贴图处理；
 - JSON 配置读取、程序化纹理生成、窗口适配、同步和代码质量。
 
@@ -89,7 +89,7 @@
 - 法线贴图由高度图推导，整体凹凸强度按照 `normalStrength` 缩放；
 - 生成结果必须限制在对应纹理格式的合法范围内。
 
-纹理上传必须使用 Vulkan 1.4 的主机图像拷贝接口 `vkCopyMemoryToImage`，直接从主机内存上传到 Vulkan 图像对象。禁止使用暂存缓冲（Staging Buffer）或 `vkCmdCopyBufferToImage` 完成这些纹理的上传。
+纹理上传优先使用 Vulkan 1.4 的主机图像拷贝接口 `vkCopyMemoryToImage`，直接从主机内存上传到 Vulkan 图像对象；运行时若 `hostImageCopy` 不支持，则必须使用 Vulkan 1.4 要求的额外 `VK_QUEUE_TRANSFER_BIT` 队列，通过 Staging Buffer 和 `vkCmdCopyBufferToImage2` 完成上传。两条路径都必须建立正确的资源状态、可见性和执行依赖。
 
 ## 四、场景详细规格
 
@@ -161,16 +161,16 @@
 - 使用 Vulkan 1.4；
 - 动态渲染（Dynamic Rendering）和 Synchronization 2 使用 Vulkan 1.4 核心 API；
 - Push Descriptors 使用 `VK_KHR_push_descriptor` 扩展及 `vkCmdPushDescriptorSetKHR`。该扩展不是 Vulkan 1.4 核心的一部分，必须检查物理设备的扩展支持，并在创建设备时正确启用；
-- Host Image Copy 使用 Vulkan 1.4 核心的 `vkCopyMemoryToImage`；
-- 除 `VK_KHR_push_descriptor` 外，不得依赖厂商专有扩展或未在任务中允许的扩展；
-- 所需 API 版本、扩展和 feature 不可用时，必须报告明确错误并退出，不得静默降级到不符合本任务约束的路径。
+- Host Image Copy 是 Vulkan 1.4 的可选能力，必须运行时查询 `VkPhysicalDeviceVulkan14Features::hostImageCopy`；支持时使用核心 `vkCopyMemoryToImage`；
+- 当 `hostImageCopy` 不支持时，必须检查额外的 `VK_QUEUE_TRANSFER_BIT` 队列，并使用该队列执行 Staging Buffer 到图像的 `vkCmdCopyBufferToImage2` 上传；
+- 不得依赖厂商专有扩展；若 Host Image Copy 和额外 Transfer Queue 均不可用，必须报告明确错误并退出。
 
 ### 2. 强制 API 使用方式
 
 - 禁止创建传统 `VkRenderPass` 和 `VkFramebuffer`；必须使用 `vkCmdBeginRendering`/`vkCmdEndRendering` 动态指定渲染附件；
 - 所有内存屏障和布局转换统一使用 `VkImageMemoryBarrier2`、`VkBufferMemoryBarrier2` 与 `vkCmdPipelineBarrier2`；
 - 禁止创建描述符池和普通描述符集对象；资源绑定必须通过 Push Descriptor 在命令缓冲录制时直接推送；
-- 程序化纹理必须通过 `vkCopyMemoryToImage` 从主机内存直接上传，禁止 Staging Buffer 中转；
+- 程序化纹理优先通过 `vkCopyMemoryToImage` 从主机内存直接上传；仅当 `hostImageCopy` 不支持时，使用额外 Transfer Queue、Staging Buffer 和 `vkCmdCopyBufferToImage2` 完成回退上传；
 - 资源状态转换、主机写入与 GPU 访问之间必须建立正确的可见性和执行依赖，不能依赖未定义的隐式同步。
 
 ## 七、基础渲染与窗口要求
@@ -191,7 +191,7 @@
 - 禁止把 `materials.json` 中的材质参数、纹理尺寸或随机种子复制为 C++/shader 常量；
 - 禁止配置文件缺失或解析失败时使用硬编码材质作为 fallback；
 - 禁止使用静态截图、预生成帧、多个子窗口、控件或软件窗口绘制冒充 Vulkan 渲染；
-- 禁止使用 Staging Buffer 上传程序化纹理；
+- 不得在 `hostImageCopy` 支持时用 Staging Buffer 替代 `vkCopyMemoryToImage`；仅允许在 `hostImageCopy` 不支持且存在额外 Transfer Queue 时使用 Staging Buffer 回退；
 - 禁止使用传统 Render Pass/Framebuffer 代替动态渲染；
 - 禁止创建描述符池或普通描述符集对象代替 Push Descriptors；
 - 禁止修改或绕过验证层错误；
@@ -204,6 +204,6 @@
 3. 程序生成每个配置材质的三张纹理，分辨率严格为 JSON 根级 `textureSize` 指定的尺寸，且相同配置下纹理生成结果可复现。
 4. 画面包含规定的部分缺失三阶魔方和 9×9 金属地板，方块位置、层数、缺失分布和材质引用符合场景规格。
 5. PBR 直接光照、金属度工作流、环境光、法线贴图和 sRGB 处理符合本任务要求，画面无明显颜色空间错误或深度错误。
-6. 动态渲染、Synchronization 2、Push Descriptors、Host Image Copy 的 API 使用方式符合强制约束；不存在传统 Render Pass/Framebuffer、描述符池、普通描述符集或纹理 Staging Buffer 上传路径。
+6. 动态渲染、Synchronization 2、Push Descriptors 以及 Vulkan 1.4 流式传输路径符合要求：支持 `hostImageCopy` 的设备使用 `vkCopyMemoryToImage`，不支持的设备使用额外 `VK_QUEUE_TRANSFER_BIT` 队列回退；不存在传统 Render Pass/Framebuffer 或描述符池、普通描述符集。
 7. 窗口保持响应；调整窗口大小后交换链、视口和裁剪矩形正确更新，不出现未覆盖区域、崩溃或明显错位。
 8. 程序关闭窗口后正常退出并释放资源。
