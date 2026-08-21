@@ -13,8 +13,9 @@
     <Project Path="OpenGL/VoxelPBRFrustumCulling_omp+gpt-5.6-luna@max/VoxelPBRFrustumCulling_omp+gpt-5.6-luna@max.vcxproj" Id="0a6ef5d8-448e-4037-b944-7311e8b934ea" />
   </Folder>
   <Folder Name="/Vulkan/">
+    <Project Path="Vulkan/RubikCube_omp+gpt-5.6-luna@max/RubikCube_omp+gpt-5.6-luna@max.vcxproj" Id="bbb5c835-cafc-4438-8f18-171223a7d626" />
+    <Project Path="Vulkan/VulkanWindow_Copilot+glm-5.2@max/VulkanWindow_Copilot+glm-5.2@max.vcxproj" Id="a155928b-4e2b-4d98-b6fe-22ebc3a30ac9" />
     <Project Path="Vulkan/VulkanWindow_omp+deepseek-v4-flash-0731@max/VulkanWindow_omp+deepseek-v4-flash-0731@max.vcxproj" Id="a9316eef-4f53-4cec-a30b-8ec10374de4e" />
     <Project Path="Vulkan/VulkanWindow_omp+gpt-5.6-luna@max/VulkanWindow_omp+gpt-5.6-luna@max.vcxproj" Id="ad991dbc-b564-412a-b74f-a8b1592de289" />
   </Folder>
-  <Project Path="Vulkan/RubikCube_omp+gpt-5.6-luna@max/RubikCube_omp+gpt-5.6-luna@max.vcxproj" Id="bbb5c835-cafc-4438-8f18-171223a7d626" />
 </Solution>
