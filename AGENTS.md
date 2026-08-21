@@ -9,7 +9,7 @@
 - 项目文件：`<任务名>.vcxproj` / `.vcxproj.filters`、`CMakeLists.txt`、`CMakePresets.json`、`platforms.json`、`vcpkg.json`
 - 代码与资源：`main.cpp`、`shaders/`、`materials.json`、`*_TASK.md`
 
-### 铁律：禁止改动项目文件
+### 铁律：禁止改动项目文件（除非用户明确要求或允许）
 
 以下文件**禁止修改**（内容、参数、属性、依赖一律不动）：
 
@@ -20,13 +20,14 @@
 
 新增文件是本职工作，允许新建并向 `.vcxproj` / `.vcxproj.filters` **添加对新文件的引用行**（不改其它内容）：
 
-- **源文件**：普通代码（`.cpp`→`ClCompile`、头文件→`ClInclude`）、着色器（`None` 项，filter=源文件）
+- **源文件**：普通代码（`.cpp`→`ClCompile`、头文件→`ClInclude`）、着色器（`None` 项，filter=源文件）、Vulkan 项目里的 .inc 文件（`None` 项，filter=源文件）
 - **资源文件**：`*_TASK.md`、`materials.json` 等（`None` 项，filter=资源文件）
 
 ### 编码约定
 
 - 实现优先写进 `main.cpp`；辅助代码优先用头文件；新编译单元尽量并入 `main.cpp`（避免改 CMake）
 - 既有产物中的平台专有代码属被测内容，禁止在项目文件/环境层打补丁，可移植性问题如实记录
+- 不得忽视编译器警告或提示，将它们视为错误
 
 ### 构建验证（完成任务后应本地构建）
 
