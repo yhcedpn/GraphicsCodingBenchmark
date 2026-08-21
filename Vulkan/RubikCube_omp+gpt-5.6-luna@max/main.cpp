@@ -527,6 +527,7 @@ public:
 private:
     struct QueueFamilySelection {
         uint32_t graphicsAndPresent{};
+        std::optional<uint32_t> transfer;
     };
 
     struct FrameResources {
@@ -555,11 +556,15 @@ private:
     VkDevice device{VK_NULL_HANDLE};
     VkQueue graphicsQueue{VK_NULL_HANDLE};
     uint32_t graphicsQueueFamily{};
+    VkQueue transferQueue{VK_NULL_HANDLE};
+    uint32_t transferQueueFamily{};
+    bool useHostImageCopy{false};
     VkPhysicalDeviceMemoryProperties memoryProperties{};
     VkPhysicalDeviceProperties deviceProperties{};
     VkImageLayout hostCopyLayout{VK_IMAGE_LAYOUT_GENERAL};
 
     VkCommandPool commandPool{VK_NULL_HANDLE};
+    VkCommandPool transferCommandPool{VK_NULL_HANDLE};
     VkDescriptorSetLayout descriptorSetLayout{VK_NULL_HANDLE};
     VkPipelineLayout pipelineLayout{VK_NULL_HANDLE};
     VkPipeline graphicsPipeline{VK_NULL_HANDLE};
@@ -653,14 +658,35 @@ private:
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &count, nullptr);
         std::vector<VkQueueFamilyProperties> families(count);
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &count, families.data());
+
+        std::optional<uint32_t> graphicsAndPresent;
         for (uint32_t index = 0; index < count; ++index) {
             VkBool32 present = VK_FALSE;
             checkVk(vkGetPhysicalDeviceSurfaceSupportKHR(candidate, index, surface, &present), "查询 Surface 队列支持");
             if ((families[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && present == VK_TRUE) {
-                return QueueFamilySelection{index};
+                graphicsAndPresent = index;
+                break;
             }
         }
-        return std::nullopt;
+        if (!graphicsAndPresent) {
+            return std::nullopt;
+        }
+
+        std::optional<uint32_t> dedicatedTransfer;
+        std::optional<uint32_t> additionalTransfer;
+        for (uint32_t index = 0; index < count; ++index) {
+            if (index == *graphicsAndPresent || (families[index].queueFlags & VK_QUEUE_TRANSFER_BIT) == 0) {
+                continue;
+            }
+            if ((families[index].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == 0) {
+                dedicatedTransfer = index;
+                break;
+            }
+            if (!additionalTransfer) {
+                additionalTransfer = index;
+            }
+        }
+        return QueueFamilySelection{*graphicsAndPresent, dedicatedTransfer ? dedicatedTransfer : additionalTransfer};
     }
 
     void selectPhysicalDevice() {
@@ -698,8 +724,9 @@ private:
             VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
             features.pNext = &features13;
             vkGetPhysicalDeviceFeatures2(candidate, &features);
+            const bool hostImageCopySupported = features14.hostImageCopy == VK_TRUE;
             if (features13.dynamicRendering != VK_TRUE || features13.synchronization2 != VK_TRUE ||
-                features14.hostImageCopy != VK_TRUE || features14.pushDescriptor != VK_TRUE) {
+                features14.pushDescriptor != VK_TRUE || (!hostImageCopySupported && !queueFamily->transfer)) {
                 continue;
             }
 
@@ -709,14 +736,18 @@ private:
                 bestScore = score;
                 physicalDevice = candidate;
                 graphicsQueueFamily = queueFamily->graphicsAndPresent;
+                transferQueueFamily = queueFamily->transfer.value_or(graphicsQueueFamily);
+                useHostImageCopy = hostImageCopySupported;
                 deviceProperties = properties;
             }
         }
         if (physicalDevice == VK_NULL_HANDLE) {
-            fail("没有同时支持 Vulkan 1.4、Dynamic Rendering、Synchronization 2、Host Image Copy 和 VK_KHR_push_descriptor 的物理设备");
+            fail("没有同时支持 Vulkan 1.4、Dynamic Rendering、Synchronization 2、Push Descriptors 和 Host Image Copy 或独立 Transfer Queue 的物理设备");
         }
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
-        queryHostCopyLayout();
+        if (useHostImageCopy) {
+            queryHostCopyLayout();
+        }
     }
 
     void queryHostCopyLayout() {
@@ -741,17 +772,26 @@ private:
 
     void createDevice() {
         const float queuePriority = 1.0f;
-        VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-        queueInfo.queueFamilyIndex = graphicsQueueFamily;
-        queueInfo.queueCount = 1;
-        queueInfo.pQueuePriorities = &queuePriority;
+        std::array<VkDeviceQueueCreateInfo, 2> queueInfos{};
+        queueInfos[0] = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+        queueInfos[0].queueFamilyIndex = graphicsQueueFamily;
+        queueInfos[0].queueCount = 1;
+        queueInfos[0].pQueuePriorities = &queuePriority;
+        uint32_t queueInfoCount = 1;
+        if (!useHostImageCopy) {
+            queueInfos[1] = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+            queueInfos[1].queueFamilyIndex = transferQueueFamily;
+            queueInfos[1].queueCount = 1;
+            queueInfos[1].pQueuePriorities = &queuePriority;
+            queueInfoCount = 2;
+        }
 
         const std::array<const char*, 2> deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
         };
         VkPhysicalDeviceVulkan14Features features14{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
-        features14.hostImageCopy = VK_TRUE;
+        features14.hostImageCopy = useHostImageCopy ? VK_TRUE : VK_FALSE;
         features14.pushDescriptor = VK_TRUE;
         VkPhysicalDeviceVulkan13Features features13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         features13.synchronization2 = VK_TRUE;
@@ -762,13 +802,16 @@ private:
 
         VkDeviceCreateInfo createInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
         createInfo.pNext = &features;
-        createInfo.queueCreateInfoCount = 1;
-        createInfo.pQueueCreateInfos = &queueInfo;
+        createInfo.queueCreateInfoCount = queueInfoCount;
+        createInfo.pQueueCreateInfos = queueInfos.data();
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
         checkVk(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device), "创建 Vulkan 设备");
         volkLoadDevice(device);
         vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
+        if (!useHostImageCopy) {
+            vkGetDeviceQueue(device, transferQueueFamily, 0, &transferQueue);
+        }
     }
 
     void createCommandPool() {
@@ -776,6 +819,10 @@ private:
         createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         createInfo.queueFamilyIndex = graphicsQueueFamily;
         checkVk(vkCreateCommandPool(device, &createInfo, nullptr, &commandPool), "创建命令池");
+        if (!useHostImageCopy) {
+            createInfo.queueFamilyIndex = transferQueueFamily;
+            checkVk(vkCreateCommandPool(device, &createInfo, nullptr, &transferCommandPool), "创建传输命令池");
+        }
     }
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
@@ -840,10 +887,13 @@ private:
         }
     }
 
-    ImageResource createImage(VkFormat format, VkExtent3D extent, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+    ImageResource createImage(VkFormat format, VkExtent3D extent, VkImageUsageFlags usage, VkImageAspectFlags aspect,
+                              VkMemoryPropertyFlags requiredMemoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                              bool shareWithTransferQueue = false) {
         ImageResource resource{};
         resource.format = format;
         try {
+            std::array<uint32_t, 2> sharingFamilies = {graphicsQueueFamily, transferQueueFamily};
             VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
             imageInfo.imageType = VK_IMAGE_TYPE_2D;
             imageInfo.format = format;
@@ -853,7 +903,11 @@ private:
             imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
             imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
             imageInfo.usage = usage;
-            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.sharingMode = shareWithTransferQueue ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
+            if (shareWithTransferQueue) {
+                imageInfo.queueFamilyIndexCount = 2;
+                imageInfo.pQueueFamilyIndices = sharingFamilies.data();
+            }
             imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             checkVk(vkCreateImage(device, &imageInfo, nullptr, &resource.image), "创建 Vulkan 图像");
 
@@ -861,7 +915,7 @@ private:
             vkGetImageMemoryRequirements(device, resource.image, &requirements);
             VkMemoryAllocateInfo allocation{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
             allocation.allocationSize = requirements.size;
-            allocation.memoryTypeIndex = findMemoryType(requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            allocation.memoryTypeIndex = findMemoryType(requirements.memoryTypeBits, requiredMemoryProperties);
             checkVk(vkAllocateMemory(device, &allocation, nullptr, &resource.memory), "分配 Vulkan 图像内存");
             checkVk(vkBindImageMemory(device, resource.image, resource.memory, 0), "绑定 Vulkan 图像内存");
 
@@ -882,9 +936,13 @@ private:
         }
     }
 
-    void immediateSubmit(const std::function<void(VkCommandBuffer)>& recorder) {
+    void immediateSubmit(VkQueue queue, VkCommandPool pool, const std::function<void(VkCommandBuffer)>& recorder,
+                         VkSemaphore waitSemaphore = VK_NULL_HANDLE,
+                         VkPipelineStageFlags2 waitStage = VK_PIPELINE_STAGE_2_NONE,
+                         VkSemaphore signalSemaphore = VK_NULL_HANDLE,
+                         VkPipelineStageFlags2 signalStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT) {
         VkCommandBufferAllocateInfo allocation{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        allocation.commandPool = commandPool;
+        allocation.commandPool = pool;
         allocation.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocation.commandBufferCount = 1;
         VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
@@ -899,13 +957,23 @@ private:
 
             VkCommandBufferSubmitInfo commandInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
             commandInfo.commandBuffer = commandBuffer;
+            VkSemaphoreSubmitInfo waitInfo{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+            waitInfo.semaphore = waitSemaphore;
+            waitInfo.stageMask = waitStage;
+            VkSemaphoreSubmitInfo signalInfo{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+            signalInfo.semaphore = signalSemaphore;
+            signalInfo.stageMask = signalStage;
             VkSubmitInfo2 submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
+            submitInfo.waitSemaphoreInfoCount = waitSemaphore != VK_NULL_HANDLE ? 1U : 0U;
+            submitInfo.pWaitSemaphoreInfos = waitSemaphore != VK_NULL_HANDLE ? &waitInfo : nullptr;
             submitInfo.commandBufferInfoCount = 1;
             submitInfo.pCommandBufferInfos = &commandInfo;
+            submitInfo.signalSemaphoreInfoCount = signalSemaphore != VK_NULL_HANDLE ? 1U : 0U;
+            submitInfo.pSignalSemaphoreInfos = signalSemaphore != VK_NULL_HANDLE ? &signalInfo : nullptr;
             VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
             VkFence fence = VK_NULL_HANDLE;
             checkVk(vkCreateFence(device, &fenceInfo, nullptr, &fence), "创建临时提交 Fence");
-            const VkResult submitResult = vkQueueSubmit2(graphicsQueue, 1, &submitInfo, fence);
+            const VkResult submitResult = vkQueueSubmit2(queue, 1, &submitInfo, fence);
             if (submitResult != VK_SUCCESS) {
                 vkDestroyFence(device, fence, nullptr);
                 fail("提交临时命令失败，VkResult=" + vkResultText(submitResult));
@@ -913,11 +981,15 @@ private:
             const VkResult waitResult = vkWaitForFences(device, 1, &fence, VK_TRUE, std::numeric_limits<uint64_t>::max());
             vkDestroyFence(device, fence, nullptr);
             checkVk(waitResult, "等待临时提交完成");
-            vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+            vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
         } catch (...) {
-            vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+            vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
             throw;
         }
+    }
+
+    void immediateSubmit(const std::function<void(VkCommandBuffer)>& recorder) {
+        immediateSubmit(graphicsQueue, commandPool, recorder);
     }
 
     void transitionImage(ImageResource& image, VkImageLayout newLayout, VkPipelineStageFlags2 sourceStage,
@@ -947,6 +1019,10 @@ private:
     }
 
     ImageResource uploadTexture(VkFormat format, const std::vector<uint8_t>& bytes) {
+        return useHostImageCopy ? uploadTextureWithHostCopy(format, bytes) : uploadTextureWithTransferQueue(format, bytes);
+    }
+
+    ImageResource uploadTextureWithHostCopy(VkFormat format, const std::vector<uint8_t>& bytes) {
         if ((static_cast<uint64_t>(config.textureSize) * config.textureSize * 4) != bytes.size()) {
             fail("程序化纹理数据尺寸与 textureSize 不一致");
         }
@@ -961,8 +1037,9 @@ private:
         ImageResource image = createImage(
             format,
             {config.textureSize, config.textureSize, 1},
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            VK_IMAGE_ASPECT_COLOR_BIT);
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_HOST_TRANSFER_BIT,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
         try {
             transitionImage(image, hostCopyLayout, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
                             VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_WRITE_BIT);
@@ -994,6 +1071,112 @@ private:
         }
     }
 
+    ImageResource uploadTextureWithTransferQueue(const std::vector<uint8_t>& bytes, VkFormat format) {
+        if ((static_cast<uint64_t>(config.textureSize) * config.textureSize * 4) != bytes.size()) {
+            fail("程序化纹理数据尺寸与 textureSize 不一致");
+        }
+
+        ImageResource image = createImage(
+            format,
+            {config.textureSize, config.textureSize, 1},
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            true);
+        BufferResource staging{};
+        VkSemaphore transferFinished = VK_NULL_HANDLE;
+        try {
+            staging = createHostBuffer(bytes.data(), bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+            VkSemaphoreCreateInfo semaphoreInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+            checkVk(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &transferFinished), "创建传输完成信号量");
+            immediateSubmit(transferQueue, transferCommandPool, [&](VkCommandBuffer commandBuffer) {
+                VkImageMemoryBarrier2 toTransfer{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+                toTransfer.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+                toTransfer.srcAccessMask = VK_ACCESS_2_NONE;
+                toTransfer.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                toTransfer.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                toTransfer.image = image.image;
+                toTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                toTransfer.subresourceRange.levelCount = 1;
+                toTransfer.subresourceRange.layerCount = 1;
+                VkDependencyInfo toTransferDependency{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+                toTransferDependency.imageMemoryBarrierCount = 1;
+                toTransferDependency.pImageMemoryBarriers = &toTransfer;
+                vkCmdPipelineBarrier2(commandBuffer, &toTransferDependency);
+
+                VkBufferImageCopy2 region{VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
+                region.bufferOffset = 0;
+                region.bufferRowLength = 0;
+                region.bufferImageHeight = 0;
+                region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                region.imageSubresource.mipLevel = 0;
+                region.imageSubresource.baseArrayLayer = 0;
+                region.imageSubresource.layerCount = 1;
+                region.imageOffset = {0, 0, 0};
+                region.imageExtent = {config.textureSize, config.textureSize, 1};
+                VkCopyBufferToImageInfo2 copyInfo{VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2};
+                copyInfo.srcBuffer = staging.buffer;
+                copyInfo.dstImage = image.image;
+                copyInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                copyInfo.regionCount = 1;
+                copyInfo.pRegions = &region;
+                vkCmdCopyBufferToImage2(commandBuffer, &copyInfo);
+
+                VkImageMemoryBarrier2 toShader{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+                toShader.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                toShader.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                toShader.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+                toShader.dstAccessMask = VK_ACCESS_2_NONE;
+                toShader.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                toShader.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                toShader.image = image.image;
+                toShader.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                toShader.subresourceRange.levelCount = 1;
+                toShader.subresourceRange.layerCount = 1;
+                VkDependencyInfo toShaderDependency{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+                toShaderDependency.imageMemoryBarrierCount = 1;
+                toShaderDependency.pImageMemoryBarriers = &toShader;
+                vkCmdPipelineBarrier2(commandBuffer, &toShaderDependency);
+            }, VK_NULL_HANDLE, VK_PIPELINE_STAGE_2_NONE, transferFinished, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT);
+
+            immediateSubmit(graphicsQueue, commandPool, [&](VkCommandBuffer commandBuffer) {
+                VkImageMemoryBarrier2 readyForSampling{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+                readyForSampling.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+                readyForSampling.srcAccessMask = VK_ACCESS_2_NONE;
+                readyForSampling.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                readyForSampling.dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+                readyForSampling.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                readyForSampling.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                readyForSampling.image = image.image;
+                readyForSampling.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                readyForSampling.subresourceRange.levelCount = 1;
+                readyForSampling.subresourceRange.layerCount = 1;
+                VkDependencyInfo readyDependency{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+                readyDependency.imageMemoryBarrierCount = 1;
+                readyDependency.pImageMemoryBarriers = &readyForSampling;
+                vkCmdPipelineBarrier2(commandBuffer, &readyDependency);
+            }, transferFinished, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+            vkDestroySemaphore(device, transferFinished, nullptr);
+            transferFinished = VK_NULL_HANDLE;
+            destroyBuffer(staging);
+            image.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            return image;
+        } catch (...) {
+            if (transferFinished != VK_NULL_HANDLE) {
+                vkDestroySemaphore(device, transferFinished, nullptr);
+            }
+            destroyBuffer(staging);
+            destroyImage(image);
+            throw;
+        }
+    }
+
+    ImageResource uploadTextureWithTransferQueue(VkFormat format, const std::vector<uint8_t>& bytes) {
+        return uploadTextureWithTransferQueue(bytes, format);
+    }
+
     void createTextures() {
         materials.reserve(config.materials.size());
         for (const MaterialConfig& material : config.materials) {
@@ -1006,6 +1189,7 @@ private:
             runtime.normal = uploadTexture(VK_FORMAT_R8G8B8A8_UNORM, generated.normal);
         }
     }
+
 
     void createDescriptorResources() {
         VkPhysicalDevicePushDescriptorPropertiesKHR pushProperties{
@@ -1219,7 +1403,6 @@ private:
     }
 
     void createGraphicsPipeline() {
-
         VkShaderModuleCreateInfo vertexModuleInfo{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
         vertexModuleInfo.codeSize = sizeof(kVertexShaderCode);
         vertexModuleInfo.pCode = kVertexShaderCode;
@@ -1589,6 +1772,10 @@ private:
                     vkDestroyFence(device, frame.inFlight, nullptr);
                 }
                 frame = {};
+            }
+            if (transferCommandPool != VK_NULL_HANDLE) {
+                vkDestroyCommandPool(device, transferCommandPool, nullptr);
+                transferCommandPool = VK_NULL_HANDLE;
             }
             if (commandPool != VK_NULL_HANDLE) {
                 vkDestroyCommandPool(device, commandPool, nullptr);
