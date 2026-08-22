@@ -1,0 +1,17 @@
+{
+  "name": "rubikcube",
+  "version": "1.0.0",
+  "description": "Vulkan 1.4 PBR RubikCube 场景渲染",
+  "dependencies": [
+    "glfw3",
+    "vulkan",
+    "volk",
+    "vulkan-memory-allocator",
+    "vulkan-utility-libraries",
+    "shaderc",
+    "spirv-tools",
+    "spirv-reflect",
+    "nlohmann-json"
+  ],
+  "builtin-baseline": "0000000000000000000000000000000000000000"
+}

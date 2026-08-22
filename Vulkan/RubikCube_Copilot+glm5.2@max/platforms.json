@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "platforms": [
+    {
+      "name": "linux",
+      "toolchain": "gcc",
+      "cxxStandard": 20,
+      "vulkanApiVersion": "1.4",
+      "windowSystem": "glfw3",
+      "graphicsBackend": "vulkan"
+    }
+  ]
+}
