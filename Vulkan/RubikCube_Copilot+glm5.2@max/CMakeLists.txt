@@ -106,7 +106,11 @@ endif()
 # volk 通过 dlopen 加载 libvulkan，不链接 libvulkan；链接 dl
 target_link_libraries(rubik_cube PRIVATE ${CMAKE_DL_LIBS})
 
-target_compile_options(rubik_cube PRIVATE -Wall -Wextra -Wpedantic)
+if(MSVC)
+    target_compile_options(rubik_cube PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(rubik_cube PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 # 运行时需要 materials.json 与二进制同目录
 add_custom_command(TARGET rubik_cube POST_BUILD
