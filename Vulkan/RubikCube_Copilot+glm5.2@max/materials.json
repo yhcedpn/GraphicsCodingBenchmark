@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "textureSize": 256,
+  "materials": [
+    {
+      "id": "brushed_metal",
+      "baseColorSRGB": [0.72, 0.74, 0.78],
+      "metallic": 1.0,
+      "roughness": 0.35,
+      "ambientOcclusion": 0.9,
+      "normalStrength": 0.6,
+      "baseColorVariation": 0.05,
+      "roughnessVariation": 0.12,
+      "textureSeed": 1337,
+      "pattern": "brushed_x"
+    },
+    {
+      "id": "red_plastic",
+      "baseColorSRGB": [0.82, 0.06, 0.08],
+      "metallic": 0.0,
+      "roughness": 0.55,
+      "ambientOcclusion": 0.8,
+      "normalStrength": 0.4,
+      "baseColorVariation": 0.08,
+      "roughnessVariation": 0.15,
+      "textureSeed": 4242,
+      "pattern": "molded"
+    }
+  ]
+}
